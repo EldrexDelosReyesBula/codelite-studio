@@ -1,0 +1,17 @@
+{
+  "name": "CodeLite Studio",
+  "short_name": "CodeLite",
+  "description": "Your pocket IDE. Zero cost. Infinite possibilities.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1E1E1E",
+  "theme_color": "#1E1E1E",
+  "icons": [
+    {
+      "src": "/assets/codelite-studio-logo-transparent.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
