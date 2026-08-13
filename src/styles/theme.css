@@ -65,12 +65,105 @@ html, body, #root {
   color: var(--text-primary);
   font-family: var(--font-system);
   -webkit-font-smoothing: antialiased;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 input, textarea, button, select {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+  touch-action: manipulation;
+}
+
+button, .icon-btn, .header-action-btn, .tree-item, .brand-badge {
+  touch-action: manipulation;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes softPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(0, 122, 204, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.05);
+  }
+}
+
+.icon-btn,
+.header-action-btn,
+.btn-primary,
+.tab-item,
+.tree-item,
+.preview-iframe,
+.drawer-collapsed-bar,
+.output-drawer,
+.modal-card,
+.command-palette,
+.sidebar,
+.preview-container,
+.brand-badge {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.icon-btn:hover,
+.header-action-btn:hover,
+.btn-primary:hover,
+.tab-item:hover,
+.tree-item:hover,
+.drawer-collapsed-bar:hover {
+  transform: translateY(-1px);
+}
+
+.icon-btn:active,
+.header-action-btn:active,
+.btn-primary:active,
+.tab-item:active,
+.tree-item:active {
+  transform: scale(0.98);
+}
+
+.modal-card,
+.command-palette,
+.output-drawer,
+.preview-container,
+.sidebar {
+  animation: fadeInUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preview-iframe {
+  animation: fadeInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary.running {
+  animation: softPulse 1.4s ease-in-out infinite;
 }
 
 /* App Container */
@@ -96,6 +189,21 @@ input, textarea, button, select {
   justify-content: space-between;
   padding: 0 var(--space-md);
   z-index: 50;
+  gap: 8px;
+}
+
+.project-switcher-wrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.project-switcher-btn {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.project-rename-btn {
+  flex-shrink: 0;
 }
 
 .brand-badge {
@@ -127,6 +235,7 @@ input, textarea, button, select {
 
 .icon-btn {
   min-width: 34px;
+  min-height: 34px;
   height: 34px;
   display: inline-flex;
   align-items: center;
@@ -167,10 +276,12 @@ input, textarea, button, select {
   white-space: nowrap;
 }
 
-.header-action-btn:hover {
-  background: var(--bg-hover);
-  border-color: rgba(255,255,255,0.18);
-  color: var(--text-bright);
+@media (hover: hover) and (pointer: fine) {
+  .header-action-btn:hover {
+    background: var(--bg-hover);
+    border-color: rgba(255,255,255,0.18);
+    color: var(--text-bright);
+  }
 }
 
 .header-action-btn:active {
@@ -185,13 +296,50 @@ input, textarea, button, select {
 
 /* On mobile, collapse to icon-only */
 @media (max-width: 768px) {
+  .header-nav {
+    gap: 6px;
+    padding: 0 8px;
+  }
+
+  .nav-actions {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .project-switcher-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .project-switcher-btn {
+    max-width: 140px;
+  }
+
+  .project-rename-btn {
+    display: none;
+  }
+
   .action-label {
     display: none;
   }
+
   .header-action-btn {
-    padding: 0 8px;
+    padding: 0 10px;
     gap: 0;
-    border: none;
+    min-height: 40px;
+    min-width: 40px;
+    border: 1px solid var(--border-light);
+  }
+
+  .icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    height: 40px;
+  }
+
+  .btn-primary {
+    min-height: 40px;
+    padding: 0 12px;
   }
 }
 
@@ -290,6 +438,15 @@ input, textarea, button, select {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .sidebar.collapsed {
   display: none;
 }
@@ -311,6 +468,8 @@ input, textarea, button, select {
 .file-tree {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: var(--space-xs) 0;
 }
 

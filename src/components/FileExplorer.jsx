@@ -102,11 +102,13 @@ function FolderNode({ name, node, depth = 0, activeFile, onSelectFile, onRenameF
 function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDelete }) {
   const [hov, setHov] = useState(false);
   const displayName = file.displayName || file.name;
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  const showControls = hov || isTouchDevice;
 
   return (
     <div
       className={`tree-item ${isActive ? 'selected' : ''}`}
-      style={{ paddingLeft: 8 + depth * 12 }}
+      style={{ paddingLeft: 8 + depth * 12, touchAction: 'manipulation' }}
       onClick={() => onSelect(file)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -116,12 +118,12 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
         {displayName}
       </span>
 
-      {hov && (
+      {showControls && (
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           {onRename && (
             <button
               className="icon-btn"
-              style={{ width: 22, height: 22, padding: 0, opacity: 0.7 }}
+              style={{ width: 22, height: 22, padding: 0, opacity: 0.9, touchAction: 'manipulation' }}
               onClick={() => onRename(file)}
               title="Rename file"
             >
@@ -131,7 +133,7 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
           {showDelete && (
             <button
               className="icon-btn"
-              style={{ width: 22, height: 22, padding: 0, opacity: 0.7 }}
+              style={{ width: 22, height: 22, padding: 0, opacity: 0.9, touchAction: 'manipulation' }}
               onClick={() => {
                 if (confirm(`Delete "${displayName}"? This cannot be undone.`)) {
                   onDelete(file.path);

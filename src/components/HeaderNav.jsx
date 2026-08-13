@@ -66,8 +66,9 @@ export default function HeaderNav({
         <div style={{ width: 1, height: 18, background: 'var(--border-light)', margin: '0 2px' }} />
 
         {/* Active Project Info Badge & Switcher */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div className="project-switcher-wrap" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
           <button
+            className="project-switcher-btn"
             onClick={() => setProjectPickerOpen(v => !v)}
             style={{
               display: 'flex',
@@ -81,7 +82,9 @@ export default function HeaderNav({
               color: 'var(--text-bright)',
               fontSize: 13,
               fontWeight: 600,
-              maxWidth: 220
+              maxWidth: 220,
+              minWidth: 0,
+              flex: 1
             }}
             title="Switch project workspace"
           >
@@ -100,7 +103,7 @@ export default function HeaderNav({
           {/* Quick Rename Button */}
           {currentProject && onRenameProject && (
             <button
-              className="icon-btn"
+              className="icon-btn project-rename-btn"
               style={{ width: 26, height: 26 }}
               onClick={(e) => {
                 e.stopPropagation();

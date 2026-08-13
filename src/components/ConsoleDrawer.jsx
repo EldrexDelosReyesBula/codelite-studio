@@ -79,6 +79,7 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
 
   const renderLogIcon = (type) => {
     if (type === 'stderr')  return <AlertTriangle size={12} color="#F14C4C" style={{ marginRight: 5, flexShrink: 0 }} />;
+    if (type === 'warning') return <AlertTriangle size={12} color="#F5C542" style={{ marginRight: 5, flexShrink: 0 }} />;
     if (type === 'success') return <CheckCircle   size={12} color="#4EC9B0" style={{ marginRight: 5, flexShrink: 0 }} />;
     if (type === 'info')    return <Info          size={12} color="#4FC1FF" style={{ marginRight: 5, flexShrink: 0 }} />;
     return null;
@@ -89,17 +90,19 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
   return (
     <div
       className="output-drawer"
-      style={{ height: displayHeight }}
+      style={{ height: displayHeight, touchAction: 'none' }}
     >
       {/* ── Drag handle ── */}
       <div
         onMouseDown={onDragStart}
         onTouchStart={onDragStart}
         style={{
-          height: 4, cursor: 'row-resize',
+          height: 8, cursor: 'row-resize',
           background: 'var(--border-light)',
           flexShrink: 0,
-          transition: 'background 0.15s'
+          transition: 'background 0.15s',
+          touchAction: 'none',
+          userSelect: 'none'
         }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--accent)'}
         onMouseLeave={e => e.currentTarget.style.background = 'var(--border-light)'}
@@ -154,16 +157,29 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
             </div>
           ) : (
             <>
-              {logs.map((log, i) => (
-                <div
-                  key={i}
-                  className={`log-line ${log.type || 'stdout'}`}
-                  style={{ display: 'flex', alignItems: 'flex-start' }}
-                >
-                  {renderLogIcon(log.type)}
-                  <span style={{ userSelect: 'text', flex: 1, wordBreak: 'break-word' }}>{log.text}</span>
-                </div>
-              ))}
+              {logs.map((log, i) => {
+                const logType = log.type || 'stdout';
+                const isError = logType === 'stderr';
+                const isWarning = logType === 'warning';
+
+                return (
+                  <div
+                    key={i}
+                    className={`log-line ${logType}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      padding: '2px 0',
+                      borderLeft: isError ? '2px solid rgba(241, 76, 76, 0.85)' : isWarning ? '2px solid rgba(245, 197, 66, 0.8)' : '2px solid transparent',
+                      paddingLeft: 6,
+                      background: isError ? 'rgba(241, 76, 76, 0.06)' : isWarning ? 'rgba(245, 197, 66, 0.06)' : 'transparent'
+                    }}
+                  >
+                    {renderLogIcon(logType)}
+                    <span style={{ userSelect: 'text', flex: 1, wordBreak: 'break-word', color: isError ? '#FF8D8D' : isWarning ? '#FFD76B' : 'var(--text-primary)' }}>{log.text}</span>
+                  </div>
+                );
+              })}
 
               {plots.map((plotUrl, idx) => (
                 <div key={idx} style={{ margin: '12px 0' }}>

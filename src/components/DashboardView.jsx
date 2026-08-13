@@ -246,6 +246,8 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
   const isPython = project.type === 'python';
   const accent   = isPython ? '#4EC9B0' : '#CE9178';
   const bg       = isPython ? 'rgba(78,201,176,0.1)' : 'rgba(206,145,120,0.1)';
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  const showControls = isHovered || isTouchDevice;
 
   return (
     <div
@@ -261,7 +263,8 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
         boxShadow: isHovered ? '0 4px 20px rgba(0,122,204,0.14)' : 'none',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        touchAction: 'manipulation'
       }}
     >
       <div>
@@ -280,7 +283,8 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
                 title="Rename project"
                 style={{
                   background: 'transparent', border: 'none', cursor: 'pointer',
-                  opacity: isHovered ? 0.7 : 0, transition: 'opacity 0.2s', padding: 4
+                  opacity: showControls ? 0.85 : 0, transition: 'opacity 0.2s', padding: 4,
+                  touchAction: 'manipulation'
                 }}
               >
                 <Edit2 size={14} color="var(--text-muted)" />
@@ -291,7 +295,8 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
               title="Delete project permanently"
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
-                opacity: isHovered ? 0.7 : 0, transition: 'opacity 0.2s', padding: 4
+                opacity: showControls ? 0.85 : 0, transition: 'opacity 0.2s', padding: 4,
+                touchAction: 'manipulation'
               }}
             >
               <Trash2 size={14} color="var(--accent-red)" />

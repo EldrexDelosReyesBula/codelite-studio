@@ -1,17 +1,21 @@
 {
   "name": "CodeLite Studio",
   "short_name": "CodeLite",
-  "description": "Your pocket IDE. Zero cost. Infinite possibilities.",
+  "description": "CodeLite Studio is a browser-based Python and web IDE for coding, running scripts, previewing apps, and managing projects from any device.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1E1E1E",
+  "background_color": "#12141a",
   "theme_color": "#1E1E1E",
+  "categories": ["developer", "productivity", "utilities"],
+  "lang": "en",
   "icons": [
     {
       "src": "/assets/codelite-studio-logo-transparent.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

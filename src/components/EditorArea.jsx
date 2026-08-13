@@ -26,17 +26,152 @@ export default function EditorArea({
     localRef.current = editor;
     if (editorRef) editorRef.current = editor;
 
+    // Language-specific completions
+    const pythonCompletions = {
+      python: ['def', 'class', 'import', 'from', 'return', 'for', 'while', 'if', 'elif', 'else', 'try', 'except', 'with', 'as', 'lambda', 'True', 'False', 'None', 'print', 'len', 'range', 'sum', 'min', 'max', 'list', 'dict', 'set', 'tuple', 'str', 'int', 'float', 'bool', 'np', 'plt', 'matplotlib', 'numpy'],
+      pandas: ['DataFrame', 'Series', 'read_csv', 'to_csv', 'dropna', 'fillna'],
+      matplotlib: ['plt', 'figure', 'plot', 'scatter', 'hist', 'xlabel', 'ylabel', 'title', 'grid', 'legend', 'show', 'tight_layout'],
+      numpy: ['np', 'array', 'arange', 'linspace', 'zeros', 'ones', 'reshape', 'mean', 'std', 'sin', 'cos', 'exp', 'sqrt']
+    };
+
+    const htmlCompletions = ['html', 'head', 'body', 'div', 'span', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'form', 'input', 'button', 'textarea', 'label', 'select', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'tfoot', 'header', 'footer', 'nav', 'section', 'article', 'aside', 'main', 'meta', 'title', 'link', 'script', 'style', 'br', 'hr', 'iframe', 'video', 'audio', 'canvas', 'svg', 'class', 'id', 'src', 'href', 'alt', 'title', 'data-', 'placeholder', 'type', 'name', 'value', 'disabled', 'required'];
+
+    const cssCompletions = ['background', 'color', 'display', 'flex', 'grid', 'width', 'height', 'margin', 'padding', 'border', 'border-radius', 'font-size', 'font-weight', 'text-align', 'justify-content', 'align-items', 'position', 'top', 'right', 'bottom', 'left', 'z-index', 'opacity', 'transform', 'transition', 'box-shadow', 'overflow', 'visibility', 'cursor', 'line-height', 'letter-spacing', 'text-decoration', 'background-color', 'background-image', 'box-sizing', 'gap', 'row-gap', 'column-gap', 'flex-direction', 'flex-wrap', 'align-self', 'justify-self', 'grid-template-columns', 'grid-template-rows', 'min-width', 'max-width', 'min-height', 'max-height'];
+
+    const javascriptCompletions = ['function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'class', 'extends', 'super', 'static', 'async', 'await', 'import', 'export', 'default', 'from', 'as', 'true', 'false', 'null', 'undefined', 'console', 'log', 'error', 'warn', 'document', 'querySelector', 'getElementById', 'getElementsByClassName', 'addEventListener', 'fetch', 'JSON', 'parse', 'stringify', 'Math', 'Array', 'Object', 'String', 'Number', 'Date', 'Set', 'Map', 'Promise', 'then', 'catch', 'finally', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'];
+
+    const languageName = getLanguage(file?.name);
+
+    // Python completions
+    if (languageName === 'python') {
+      monaco.languages.registerCompletionItemProvider('python', {
+        triggerCharacters: ['.', ' ', '\n', '"', "'", '(', '[', '{'],
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn
+          };
+
+          const items = [];
+          const suggestions = [...pythonCompletions.python, ...pythonCompletions.numpy, ...pythonCompletions.matplotlib];
+
+          suggestions.forEach((label) => {
+            items.push({
+              label,
+              kind: monaco.languages.CompletionItemKind.Keyword,
+              insertText: label,
+              range,
+              detail: 'Python keyword'
+            });
+          });
+
+          return { suggestions: items };
+        }
+      });
+    }
+
+    // HTML completions
+    if (languageName === 'html') {
+      monaco.languages.registerCompletionItemProvider('html', {
+        triggerCharacters: ['<', ' ', '=', '"', "'", '.', '-'],
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn
+          };
+
+          const items = [];
+          htmlCompletions.forEach((label) => {
+            items.push({
+              label,
+              kind: label.startsWith('class') || label.startsWith('id') || label.startsWith('data-') ? 
+                monaco.languages.CompletionItemKind.Property : 
+                monaco.languages.CompletionItemKind.Keyword,
+              insertText: label,
+              range,
+              detail: 'HTML attribute/tag'
+            });
+          });
+
+          return { suggestions: items };
+        }
+      });
+    }
+
+    // CSS completions
+    if (languageName === 'css') {
+      monaco.languages.registerCompletionItemProvider('css', {
+        triggerCharacters: ['-', ' ', ':'],
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn
+          };
+
+          const items = [];
+          cssCompletions.forEach((label) => {
+            items.push({
+              label,
+              kind: monaco.languages.CompletionItemKind.Property,
+              insertText: label,
+              range,
+              detail: 'CSS property'
+            });
+          });
+
+          return { suggestions: items };
+        }
+      });
+    }
+
+    // JavaScript/TypeScript completions
+    if (languageName === 'javascript' || languageName === 'typescript') {
+      const lang = languageName === 'javascript' ? 'javascript' : 'typescript';
+      monaco.languages.registerCompletionItemProvider(lang, {
+        triggerCharacters: ['.', ' ', '\n', '"', "'", '(', '[', '{'],
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn
+          };
+
+          const items = [];
+          javascriptCompletions.forEach((label) => {
+            items.push({
+              label,
+              kind: monaco.languages.CompletionItemKind.Keyword,
+              insertText: label,
+              range,
+              detail: 'JavaScript keyword'
+            });
+          });
+
+          return { suggestions: items };
+        }
+      });
+    }
+
     // Custom keybindings
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       // Autosave already handles this — visual feedback only
     });
 
-    // Ctrl+/ to toggle line comment
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
       editor.getAction('editor.action.commentLine')?.run();
     });
 
-    // F11 = zen mode
     editor.addCommand(monaco.KeyCode.F11, () => {
       setZenMode(v => !v);
     });
@@ -77,27 +212,28 @@ export default function EditorArea({
     insertSpaces: true,
     fontFamily: "'Fira Code', 'SF Mono', Consolas, 'Courier New', monospace",
     fontLigatures: true,
-    smoothScrolling: true,
-    cursorBlinking: 'smooth',
-    cursorSmoothCaretAnimation: 'on',
+    smoothScrolling: false,
+    cursorBlinking: 'solid',
+    cursorSmoothCaretAnimation: 'off',
     renderWhitespace: 'boundary',
     renderLineHighlight: 'gutter',
     selectionHighlight: true,
-    occurrencesHighlight: 'singleFile',
-    bracketPairColorization: { enabled: true },
-    guides: { bracketPairs: true, indentation: true },
+    occurrencesHighlight: 'off',
+    bracketPairColorization: { enabled: false },
+    guides: { bracketPairs: false, indentation: false },
     padding: { top: 10, bottom: 10 },
     folding: true,
     foldingHighlight: true,
     showFoldingControls: 'mouseover',
-    formatOnPaste: true,
+    largeFileOptimizations: true,
+    formatOnPaste: false,
     formatOnType: false,
     autoClosingBrackets: 'always',
     autoClosingQuotes: 'always',
     suggest: { showKeywords: true, showSnippets: true },
-    quickSuggestions: { other: true, comments: true, strings: true },
-    parameterHints: { enabled: true },
-    inlineSuggest: { enabled: true },
+    quickSuggestions: { other: false, comments: false, strings: false },
+    parameterHints: { enabled: false },
+    inlineSuggest: { enabled: false },
     accessibilitySupport: 'off',
     scrollbar: {
       vertical: 'auto',

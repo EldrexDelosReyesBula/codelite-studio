@@ -3,8 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>CodeLite Studio — Pocket IDE</title>
-    
+    <meta http-equiv="Content-Language" content="en" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="googlebot" content="index,follow" />
+    <meta name="description" content="CodeLite Studio is a browser-based Python and web IDE for coding on the go. Build, run, preview, and manage projects from any device." />
+    <meta name="keywords" content="CodeLite Studio, Python IDE, online Python editor, web IDE, browser coding platform, online code editor, Pyodide, Matplotlib, HTML CSS JS IDE, mobile IDE" />
+    <meta name="author" content="CodeLite Studio" />
+    <meta name="application-name" content="CodeLite Studio" />
+    <meta name="theme-color" content="#1E1E1E" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="canonical" content="https://codelite-studio.vercel.app/" />
+    <link rel="canonical" href="https://codelite-studio.vercel.app/" />
+
+    <title>CodeLite Studio — Browser Python & Web IDE</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeLite Studio" />
+    <meta property="og:title" content="CodeLite Studio — Browser Python & Web IDE" />
+    <meta property="og:description" content="CodeLite Studio brings Python, web development, and project management together in a fast, mobile-friendly browser IDE." />
+    <meta property="og:url" content="https://codelite-studio.vercel.app/" />
+    <meta property="og:image" content="https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png" />
+    <meta property="og:image:alt" content="CodeLite Studio logo" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CodeLite Studio — Browser Python & Web IDE" />
+    <meta name="twitter:description" content="Build Python and web apps right from the browser with an offline-friendly mobile IDE." />
+    <meta name="twitter:image" content="https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png" />
+
     <!-- Favicon & Official Logo -->
     <link rel="icon" type="image/x-icon" href="/assets/codelite-studio-logo.ico" />
     <link rel="apple-touch-icon" href="/assets/codelite-studio-logo-transparent.png" />
@@ -13,14 +42,37 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="CodeLite Studio" />
-    <meta name="theme-color" content="#1E1E1E" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "CodeLite Studio",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": ["Web"],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "CodeLite Studio is a browser-based Python and web IDE for coding, project management, previews, and local persistence on mobile and desktop devices.",
+        "url": "https://codelite-studio.vercel.app/",
+        "image": "https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png",
+        "author": {
+          "@type": "Organization",
+          "name": "CodeLite Studio"
+        },
+        "keywords": "Python IDE, browser IDE, online code editor, web developer tools"
+      }
+    </script>
+
     <!-- Pyodide Python WASM CDN -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
   </head>

@@ -30,7 +30,7 @@ import {
   deleteAllProjects,
   exportProjectZip
 } from './services/storageManager';
-import { runPythonCode } from './services/pythonRunner';
+import { runPythonCode, preloadPyodideInBackground } from './services/pythonRunner';
 
 export default function App() {
   // ── View: 'dashboard' | 'editor'
@@ -69,6 +69,15 @@ export default function App() {
   const autoSaveTimer    = useRef(null);
   const isDraggingSplit  = useRef(false);
   const splitContainerRef = useRef(null);
+  const MAX_LOGS = 200;
+
+  const flushPendingAutosave = async () => {
+    if (!currentProject || openFiles.length === 0) return;
+
+    await Promise.allSettled(
+      openFiles.map(file => saveFile(file.path, file.content ?? '', currentProject.id))
+    );
+  };
 
   // Bootstrap
   useEffect(() => {
@@ -76,6 +85,8 @@ export default function App() {
       await initializeStorage();
       const list = await getProjects();
       setProjects(list || []);
+      // Start Pyodide pre-load in background so it's ready when user runs code
+      preloadPyodideInBackground();
     })();
   }, []);
 
@@ -106,6 +117,29 @@ export default function App() {
       window.removeEventListener('touchend',  onEnd);
     };
   }, []);
+
+  useEffect(() => {
+    const persistOnLeave = () => {
+      clearTimeout(autoSaveTimer.current);
+      flushPendingAutosave();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        persistOnLeave();
+      }
+    };
+
+    window.addEventListener('beforeunload', persistOnLeave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', persistOnLeave);
+
+    return () => {
+      window.removeEventListener('beforeunload', persistOnLeave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', persistOnLeave);
+    };
+  }, [currentProject, openFiles]);
 
   // Open project → switch to editor
   const openProject = async (project) => {
@@ -153,14 +187,17 @@ export default function App() {
   // Code changes
   const handleCodeChange = (newContent) => {
     if (!activeFile || !currentProject) return;
+    if (activeFile.content === newContent) return;
+
     const updated = { ...activeFile, content: newContent };
     setActiveFile(updated);
     setFiles(prev     => prev.map(f => f.path === updated.path ? updated : f));
     setOpenFiles(prev => prev.map(f => f.path === updated.path ? updated : f));
+
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      saveFile(updated.path, newContent, currentProject.id);
-    }, 800);
+    autoSaveTimer.current = setTimeout(async () => {
+      await saveFile(updated.path, newContent, currentProject.id);
+    }, 600);
   };
 
   // File CRUD
@@ -292,8 +329,19 @@ export default function App() {
   };
 
   // Run code
-  const addLog = (text, type = 'stdout') =>
-    setLogs(prev => [...prev, { text, type }]);
+  const addLog = (text, type = 'stdout') => {
+    const normalizedText = String(text ?? '');
+    const normalizedType = /traceback|error|exception|failed/i.test(normalizedText)
+      ? 'stderr'
+      : /warning|warn/i.test(normalizedText)
+        ? 'warning'
+        : type;
+
+    setLogs(prev => {
+      const next = [...prev, { text: normalizedText, type: normalizedType }];
+      return next.length > MAX_LOGS ? next.slice(-MAX_LOGS) : next;
+    });
+  };
 
   const handleRunCode = async () => {
     setConsoleVisible(true);
@@ -356,7 +404,10 @@ export default function App() {
             onOpenZipImport={() => setZipImportOpen(true)}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onExportZip={handleExportZip}
-            onGoToDashboard={() => setView('dashboard')}
+            onGoToDashboard={async () => {
+              await flushPendingAutosave();
+              setView('dashboard');
+            }}
           />
 
           <div className="main-layout">

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://codelite-studio.vercel.app/sitemap.xml
