@@ -67,7 +67,6 @@ except Exception:
     return pyodideInstance;
   } catch (err) {
     isLoading = false;
-    self.postMessage({ type: 'error', message: err?.message || String(err) });
     throw err;
   }
 }
@@ -98,10 +97,8 @@ self.onmessage = async (event) => {
     });
 
     await pyodide.runPythonAsync(code);
-    self.postMessage({ type: 'stdout', text: '--- Execution completed ---' });
     self.postMessage({ type: 'done' });
   } catch (err) {
-    self.postMessage({ type: 'stderr', text: err?.message || String(err) });
-    self.postMessage({ type: 'done' });
+    self.postMessage({ type: 'error', message: err?.message || String(err) });
   }
 };

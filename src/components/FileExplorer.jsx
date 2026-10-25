@@ -4,7 +4,7 @@ import {
   Trash2, Download, Upload, FilePlus, FolderPlus,
   ChevronLeft, Search, Folder, FolderOpen,
   ChevronRight, ChevronDown, Edit2
-} from 'lucide-react';
+} from './icons';
 
 /* ── Helpers ── */
 
@@ -48,11 +48,15 @@ function FolderNode({ name, node, depth = 0, activeFile, onSelectFile, onRenameF
 
   return (
     <div>
-      <div
+      <button
+        type="button"
+        aria-expanded={open}
         onClick={() => setOpen(v => !v)}
         style={{
+          width: 'calc(100% - 8px)',
           display: 'flex', alignItems: 'center', gap: 6,
           height: 30, paddingLeft: 8 + depth * 12, paddingRight: 8,
+          border: 0, background: 'transparent', textAlign: 'left',
           cursor: 'pointer', borderRadius: 6, margin: '1px 4px',
           color: 'var(--text-muted)',
           transition: 'background 0.1s'
@@ -68,7 +72,7 @@ function FolderNode({ name, node, depth = 0, activeFile, onSelectFile, onRenameF
           : <Folder    size={14} color="#DCDCAA" />
         }
         <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.2px', flex: 1 }}>{name}</span>
-      </div>
+      </button>
 
       {open && (
         <div>
@@ -106,26 +110,40 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
   const showControls = hov || isTouchDevice;
 
   return (
-    <div
-      className={`tree-item ${isActive ? 'selected' : ''}`}
-      style={{ paddingLeft: 8 + depth * 12, touchAction: 'manipulation' }}
-      onClick={() => onSelect(file)}
+    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
-      {getFileIcon(displayName)}
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
-        {displayName}
-      </span>
+      <button
+        type="button"
+        className={`tree-item ${isActive ? 'selected' : ''}`}
+        aria-pressed={isActive}
+        onClick={() => onSelect(file)}
+        style={{
+          paddingLeft: 8 + depth * 12,
+          paddingRight: showControls ? 64 : 8,
+          touchAction: 'manipulation',
+          width: '100%',
+          border: 0,
+          textAlign: 'left',
+          background: isActive ? 'var(--bg-active)' : 'transparent'
+        }}
+      >
+        {getFileIcon(displayName)}
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
+          {displayName}
+        </span>
+      </button>
 
       {showControls && (
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0, position: 'absolute', right: 8 }}>
           {onRename && (
             <button
               className="icon-btn"
               style={{ width: 22, height: 22, padding: 0, opacity: 0.9, touchAction: 'manipulation' }}
               onClick={() => onRename(file)}
               title="Rename file"
+              aria-label={`Rename ${displayName}`}
             >
               <Edit2 size={11} color="var(--text-muted)" />
             </button>
@@ -140,6 +158,7 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
                 }
               }}
               title="Delete file"
+              aria-label={`Delete ${displayName}`}
             >
               <Trash2 size={11} color="var(--accent-red)" />
             </button>
@@ -268,6 +287,7 @@ export default function FileExplorer({
           <Search size={12} color="var(--text-muted)" />
           <input
             type="text"
+            aria-label="Filter files"
             value={fileSearch}
             onChange={e => setFileSearch(e.target.value)}
             placeholder="Filter files…"

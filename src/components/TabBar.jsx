@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileCode, Code2, Palette, FileJson, FileText, X, Plus } from 'lucide-react';
+import { FileCode, Code2, Palette, FileJson, FileText, X, Plus } from './icons';
 
 export default function TabBar({
   openFiles,
@@ -34,6 +34,8 @@ export default function TabBar({
 
             {openFiles.length > 1 && (
               <button
+                type="button"
+                className="tab-close-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCloseTab(file.path);
@@ -50,6 +52,7 @@ export default function TabBar({
                   opacity: 0.7
                 }}
                 title="Close Tab"
+                aria-label={`Close ${displayName} tab`}
               >
                 <X size={12} />
               </button>
@@ -60,9 +63,11 @@ export default function TabBar({
 
       {onNewFile && (
         <button
+          type="button"
           className="add-tab-btn"
           onClick={onNewFile}
           title="New File in Workspace"
+          aria-label="New File in Workspace"
         >
           <Plus size={15} />
         </button>

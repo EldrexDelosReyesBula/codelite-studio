@@ -1,26 +1,203 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import * as prettier from 'prettier/standalone';
 import { 
   Settings2,
   AlignJustify,
   Maximize2,
   Minimize2,
-  Search
-} from 'lucide-react';
+  Search,
+  Copy,
+  Sparkles,
+  CheckCircle,
+  AlertCircle,
+  Info
+} from './icons';
 
 const FONT_SIZES = [11, 12, 13, 14, 15, 16, 18];
+const FORMATTERS = {
+  html: {
+    parser: 'html',
+    loadPlugins: async () => [
+      (await import('prettier/plugins/html')).default,
+      (await import('prettier/plugins/babel')).default,
+      (await import('prettier/plugins/estree')).default
+    ]
+  },
+  css: {
+    parser: 'css',
+    loadPlugins: async () => [(await import('prettier/plugins/postcss')).default]
+  },
+  javascript: {
+    parser: 'babel',
+    loadPlugins: async () => [
+      (await import('prettier/plugins/babel')).default,
+      (await import('prettier/plugins/estree')).default
+    ]
+  },
+  typescript: {
+    parser: 'typescript',
+    loadPlugins: async () => [
+      (await import('prettier/plugins/typescript')).default,
+      (await import('prettier/plugins/estree')).default
+    ]
+  },
+  json: {
+    parser: 'json',
+    loadPlugins: async () => [
+      (await import('prettier/plugins/babel')).default,
+      (await import('prettier/plugins/estree')).default
+    ]
+  },
+  markdown: {
+    parser: 'markdown',
+    loadPlugins: async () => [(await import('prettier/plugins/markdown')).default]
+  }
+};
 
 export default function EditorArea({
   file,
   onCodeChange,
-  editorRef
+  editorRef,
+  lineToReveal,
+  onLineRevealed
 }) {
   const localRef = useRef(null);
   const [fontSize, setFontSize]   = useState(14);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [wordWrap, setWordWrap]   = useState('on');
   const [minimap, setMinimap]     = useState(false);
   const [zenMode, setZenMode]     = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const feedbackTimeoutRef = useRef(null);
+  const formatHandlerRef = useRef(null);
+
+  const showFeedback = (message, variant = 'success', action = null) => {
+    setFeedback({ message, variant, action });
+    clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), variant === 'error' ? 4000 : 2400);
+  };
+
+  useEffect(() => () => clearTimeout(feedbackTimeoutRef.current), []);
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
+  const formatDocument = async (automatic = false) => {
+    const editor = localRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    const formatter = FORMATTERS[model.getLanguageId()];
+    if (!formatter) {
+      if (!automatic) showFeedback(`Formatting isn't available for ${model.getLanguageId()}.`, 'info');
+      return;
+    }
+
+    try {
+      const formatted = await prettier.format(model.getValue(), {
+        parser: formatter.parser,
+        plugins: await formatter.loadPlugins(),
+        tabWidth: 2,
+        useTabs: false,
+        singleQuote: true,
+        semi: true
+      });
+      if (formatted !== model.getValue()) {
+        const selections = editor.getSelections() || [];
+        editor.pushUndoStop();
+        editor.executeEdits('format-document', [{
+          range: model.getFullModelRange(),
+          text: formatted,
+          forceMoveMarkers: true
+        }]);
+        editor.pushUndoStop();
+
+        const updatedModel = editor.getModel();
+        if (updatedModel && selections.length) {
+          editor.setSelections(selections.map(selection => {
+            const lineNumber = Math.min(selection.positionLineNumber, updatedModel.getLineCount());
+            const column = Math.min(
+              selection.positionColumn,
+              updatedModel.getLineMaxColumn(lineNumber)
+            );
+            return {
+              selectionStartLineNumber: Math.min(selection.selectionStartLineNumber, updatedModel.getLineCount()),
+              selectionStartColumn: Math.min(
+                selection.selectionStartColumn,
+                updatedModel.getLineMaxColumn(Math.min(selection.selectionStartLineNumber, updatedModel.getLineCount()))
+              ),
+              positionLineNumber: lineNumber,
+              positionColumn: column
+            };
+          }));
+        }
+        onCodeChange(updatedModel.getValue());
+        showFeedback(automatic ? 'Pasted code formatted' : 'Document formatted');
+      } else if (!automatic) {
+        showFeedback('Already formatted', 'info');
+      }
+    } catch (error) {
+      showFeedback(`Format failed: ${error.message}`, 'error');
+    }
+  };
+  formatHandlerRef.current = formatDocument;
+
+  const copyCode = async () => {
+    const editor = localRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard access is unavailable. Use your device keyboard or browser menu.');
+      }
+      const selection = editor.getSelection();
+      const hasSelection = selection && !selection.isEmpty();
+      const text = hasSelection ? model.getValueInRange(selection) : model.getValue();
+      await navigator.clipboard.writeText(text);
+      showFeedback(hasSelection ? 'Selection copied' : 'File copied', 'success', 'copy');
+    } catch (error) {
+      showFeedback(error.message || 'Unable to copy code', 'error');
+    }
+  };
+
+  const pasteCode = async () => {
+    const editor = localRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    try {
+      if (!navigator.clipboard?.readText) {
+        throw new Error('Clipboard access is unavailable. Use Paste from your device keyboard or browser menu.');
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        showFeedback('Clipboard is empty', 'info');
+        return;
+      }
+      const selection = editor.getSelection();
+      const range = selection || {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 1
+      };
+      editor.executeEdits('clipboard-paste', [{
+        range,
+        text,
+        forceMoveMarkers: true
+      }]);
+      editor.focus();
+      showFeedback('Code pasted', 'success', 'paste');
+    } catch (error) {
+      showFeedback(error.message || 'Unable to paste code', 'error');
+    }
+  };
 
   const handleEditorDidMount = (editor, monaco) => {
     localRef.current = editor;
@@ -172,6 +349,17 @@ export default function EditorArea({
       editor.getAction('editor.action.commentLine')?.run();
     });
 
+    editor.addAction({
+      id: 'codelite.format-document',
+      label: 'Format Document',
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF],
+      run: () => formatHandlerRef.current?.()
+    });
+    editor.onDidPaste(() => {
+      showFeedback('Code pasted', 'success', 'paste');
+      formatHandlerRef.current?.(true);
+    });
+
     editor.addCommand(monaco.KeyCode.F11, () => {
       setZenMode(v => !v);
     });
@@ -195,10 +383,19 @@ export default function EditorArea({
       localRef.current.updateOptions({
         fontSize,
         wordWrap,
+        renderWhitespace: isMobile ? 'selection' : 'boundary',
         minimap: { enabled: minimap }
       });
     }
-  }, [fontSize, wordWrap, minimap]);
+  }, [fontSize, wordWrap, minimap, isMobile]);
+
+  useEffect(() => {
+    if (!localRef.current || !lineToReveal) return;
+    localRef.current.revealLineInCenter(lineToReveal);
+    localRef.current.setPosition({ lineNumber: lineToReveal, column: 1 });
+    localRef.current.focus();
+    onLineRevealed?.();
+  }, [file?.path, lineToReveal, onLineRevealed]);
 
   const editorOptions = {
     fontSize,
@@ -212,10 +409,10 @@ export default function EditorArea({
     insertSpaces: true,
     fontFamily: "'Fira Code', 'SF Mono', Consolas, 'Courier New', monospace",
     fontLigatures: true,
-    smoothScrolling: false,
-    cursorBlinking: 'solid',
-    cursorSmoothCaretAnimation: 'off',
-    renderWhitespace: 'boundary',
+    smoothScrolling: true,
+    cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on',
+    renderWhitespace: isMobile ? 'selection' : 'boundary',
     renderLineHighlight: 'gutter',
     selectionHighlight: true,
     occurrencesHighlight: 'off',
@@ -277,9 +474,44 @@ export default function EditorArea({
           {getLanguage(file?.name)}
         </span>
 
+        <button
+          type="button"
+          className={`editor-clipboard-btn ${feedback?.action === 'copy' ? 'is-complete' : ''}`}
+          onClick={copyCode}
+          aria-label="Copy selected code or entire file"
+          title="Copy selection, or the entire file if nothing is selected"
+        >
+          {feedback?.action === 'copy' ? <CheckCircle size={15} /> : <Copy size={13} />}
+          <span>{feedback?.action === 'copy' ? 'Copied' : 'Copy'}</span>
+        </button>
+        <button
+          type="button"
+          className={`editor-clipboard-btn ${feedback?.action === 'paste' ? 'is-complete' : ''}`}
+          onClick={pasteCode}
+          aria-label="Paste code from clipboard"
+          title="Paste clipboard contents at the cursor"
+        >
+          {feedback?.action === 'paste' && <CheckCircle size={15} />}
+          <span>{feedback?.action === 'paste' ? 'Pasted' : 'Paste'}</span>
+        </button>
+        <button
+          type="button"
+          className="editor-clipboard-btn"
+          onClick={() => formatDocument()}
+          aria-label="Format document"
+          title="Format document (Alt+Shift+F); supported languages format automatically after paste"
+        >
+          <Sparkles size={13} />
+          <span>Format</span>
+        </button>
+        <span className="editor-clipboard-status" aria-live="polite" title={feedback?.message}>
+          {feedback?.message}
+        </span>
+
         {/* Find in file */}
         <button
-          className="icon-btn"
+          type="button"
+          className="icon-btn editor-secondary-control"
           style={{ width: 24, height: 24 }}
           onClick={() => localRef.current?.getAction('actions.find')?.run()}
           title="Find in file (Ctrl+F)"
@@ -289,7 +521,7 @@ export default function EditorArea({
 
         {/* Word Wrap toggle */}
         <button
-          className="icon-btn"
+          className="icon-btn editor-secondary-control"
           style={{ width: 24, height: 24, opacity: wordWrap === 'on' ? 1 : 0.4 }}
           onClick={() => setWordWrap(v => v === 'on' ? 'off' : 'on')}
           title={wordWrap === 'on' ? 'Disable Word Wrap' : 'Enable Word Wrap'}
@@ -313,7 +545,7 @@ export default function EditorArea({
 
         {/* Minimap toggle */}
         <button
-          className="icon-btn"
+          className="icon-btn editor-secondary-control"
           style={{ width: 24, height: 24, opacity: minimap ? 1 : 0.4 }}
           onClick={() => setMinimap(v => !v)}
           title={minimap ? 'Hide Minimap' : 'Show Minimap'}
@@ -323,7 +555,7 @@ export default function EditorArea({
 
         {/* Zen Mode toggle */}
         <button
-          className="icon-btn"
+          className="icon-btn editor-secondary-control"
           style={{ width: 24, height: 24 }}
           onClick={() => setZenMode(v => !v)}
           title={zenMode ? 'Exit Focus Mode (F11)' : 'Enter Focus Mode (F11)'}
@@ -359,6 +591,16 @@ export default function EditorArea({
         }}>
           <span style={{ fontSize: 32, opacity: 0.3 }}>{'</>'}</span>
           <span style={{ fontSize: 13 }}>Select a file from the sidebar to start editing</span>
+        </div>
+      )}
+      {feedback && (
+        <div className={`editor-feedback editor-feedback-${feedback.variant}`} role={feedback.variant === 'error' ? 'alert' : 'status'}>
+          {feedback.variant === 'error'
+            ? <AlertCircle size={17} />
+            : feedback.variant === 'info'
+              ? <Info size={17} />
+              : <CheckCircle size={17} />}
+          <span>{feedback.message}</span>
         </div>
       )}
     </div>

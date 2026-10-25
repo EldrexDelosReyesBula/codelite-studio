@@ -69,8 +69,13 @@ self.addEventListener('fetch', (event) => {
         caches.open(cacheName).then((cache) => cache.put(event.request, responseToCache));
         return networkResponse;
       }).catch(() => {
-        // Fallback response if offline
-        return caches.match('/');
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+        return new Response(null, {
+          status: 503,
+          statusText: 'Offline and resource is not cached'
+        });
       });
     })
   );

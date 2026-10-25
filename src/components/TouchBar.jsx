@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Code2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Code2 } from './icons';
 
 const TOUCH_KEYS = [
   { label: 'Tab', value: '  ' },
@@ -34,7 +34,9 @@ export default function TouchBar({ onInsertText }) {
 
   if (collapsed) {
     return (
-      <div
+      <button
+        type="button"
+        className="touch-toolbar-toggle"
         style={{
           height: 22,
           minHeight: 22,
@@ -46,7 +48,9 @@ export default function TouchBar({ onInsertText }) {
           gap: 4,
           fontSize: 10,
           color: 'var(--text-muted)',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          width: '100%',
+          border: 0
         }}
         onClick={() => setCollapsed(false)}
         title="Show Quick Symbols"
@@ -54,15 +58,16 @@ export default function TouchBar({ onInsertText }) {
         <Code2 size={11} />
         <span>Symbols Bar</span>
         <ChevronUp size={11} />
-      </div>
+      </button>
     );
   }
 
   return (
     <div className="touch-toolbar" role="toolbar" aria-label="Touch Code Keys">
       <button
+        type="button"
         className="touch-key"
-        style={{ minWidth: 26, padding: 0, opacity: 0.7 }}
+        style={{ minWidth: 44, padding: 0, opacity: 0.7 }}
         onClick={() => setCollapsed(true)}
         title="Hide Touch Symbols"
       >
@@ -71,6 +76,7 @@ export default function TouchBar({ onInsertText }) {
 
       {TOUCH_KEYS.map((key, idx) => (
         <button
+          type="button"
           key={idx}
           className="touch-key"
           onClick={() => onInsertText(key.value)}

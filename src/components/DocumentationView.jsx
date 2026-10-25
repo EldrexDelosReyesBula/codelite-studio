@@ -8,7 +8,7 @@ import {
   Check, 
   Play, 
   X
-} from 'lucide-react';
+} from './icons';
 
 const DOC_TOPICS = [
   {
@@ -287,14 +287,19 @@ export default function DocumentationView({ isOpen, onInsertSnippet, onClose }) 
             {filteredTopics.map((topic) => {
               const isSelected = selectedTopic.id === topic.id;
               return (
-                <div
+                <button
+                  type="button"
                   key={topic.id}
+                  aria-pressed={isSelected}
                   onClick={() => setSelectedTopic(topic)}
                   style={{
                     padding: '10px 12px',
                     borderRadius: '8px',
                     marginBottom: '4px',
                     cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
+                    color: 'inherit',
                     background: isSelected ? 'var(--bg-active)' : 'transparent',
                     border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
                     transition: 'all 0.15s ease'
@@ -305,7 +310,7 @@ export default function DocumentationView({ isOpen, onInsertSnippet, onClose }) 
                     <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? 'var(--text-bright)' : 'var(--text-primary)' }}>
                       {topic.title}
                     </span>
-                  </div>
+                  </button>
                   <span style={{ fontSize: '10px', color: 'var(--accent-light)', textTransform: 'uppercase' }}>
                     {topic.category}
                   </span>

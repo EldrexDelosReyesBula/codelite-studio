@@ -12,12 +12,33 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+.vite/
+.vercel/
+
+# Local project skills are user-provided and must not be committed
+/skills/
+
+# Test, coverage, and generated reports
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Local caches and temporary files
+.cache/
+.temp/
+tmp/
+temp/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+.vs/
+.history/
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.suo
 *.ntvsopt
 *.njsproj
@@ -30,3 +51,5 @@ dist-ssr/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+!.env.example

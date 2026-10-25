@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-10-25
+
+### Added
+- **Code formatting:** format HTML, CSS, JavaScript, TypeScript, JSON, and Markdown on demand or after paste; formatter plugins load only when needed.
+- **Build-time server-rendered SEO landing page:** production HTML now includes readable page content before client-side IDE startup, plus Open Graph, Twitter, canonical, and structured application metadata.
+- **Mobile clipboard controls:** copy selected code or the full file and paste code from the device clipboard.
+- **Repository hygiene:** ignore the local `skills/` directory and common generated, cache, test, and deployment artifacts.
+
+### Fixed
+- **Active HTML preview:** run the selected HTML file by its current filename and only include project CSS/JavaScript referenced from that document.
+- **Editor and console resizing:** use pointer capture and cancellation, keyboard-adjustable splitter handles, and bounded resizing without transition lag.
+- **Web preview assets:** resolve linked project stylesheets and scripts relative to the active HTML file.
+- **Mobile text selection:** remove the global selection lock that prevented normal code selection and clipboard workflows.
+
+### Improved
+- **Navigation and editor usability:** clearer mobile editor controls, smooth editor scrolling/caret movement, and accessible splitter semantics.
+- **Small-screen polish:** consistent touch targets, compact console controls, horizontal-scroll cues, and quieter editor whitespace indicators on mobile.
+- **Action feedback:** copy, paste, and formatting now show clear success, informational, or error states; mobile search uses a more usable bottom-sheet layout.
+- **SEO metadata:** align structured metadata with the current release and improve social preview image descriptions.
+
+---
+
 ## [1.0.1] - 2026-08-13
 
 ### Added

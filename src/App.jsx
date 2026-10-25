@@ -30,7 +30,7 @@ import {
   deleteAllProjects,
   exportProjectZip
 } from './services/storageManager';
-import { runPythonCode, preloadPyodideInBackground } from './services/pythonRunner';
+import { runPythonCode } from './services/pythonRunner';
 
 export default function App() {
   // ── View: 'dashboard' | 'editor'
@@ -51,6 +51,9 @@ export default function App() {
   const [logs,  setLogs]  = useState([]);
   const [plots, setPlots] = useState([]);
   const [isRunning,        setIsRunning]         = useState(false);
+  const [pendingLine,      setPendingLine]       = useState(null);
+  const [workspaceError,   setWorkspaceError]    = useState('');
+  const [previewRefreshToken, setPreviewRefreshToken] = useState(0);
 
   // ── Modals
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -67,16 +70,33 @@ export default function App() {
 
   const editorRef        = useRef(null);
   const autoSaveTimer    = useRef(null);
+  const pendingAutosaves = useRef(new Map());
+  const autosaveInFlight = useRef(Promise.resolve());
   const isDraggingSplit  = useRef(false);
+  const splitDragPointerId = useRef(null);
   const splitContainerRef = useRef(null);
   const MAX_LOGS = 200;
 
   const flushPendingAutosave = async () => {
-    if (!currentProject || openFiles.length === 0) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = null;
+    const saveBatch = async () => {
+      const pending = [...pendingAutosaves.current.values()];
+      pendingAutosaves.current.clear();
+      const results = await Promise.allSettled(
+        pending.map(file => saveFile(file.path, file.content, file.projectId))
+      );
+      const failures = results.flatMap((result, index) => {
+        if (result.status === 'fulfilled') return [];
+        pendingAutosaves.current.set(pending[index].path, pending[index]);
+        return [result.reason];
+      });
+      if (failures.length) throw new AggregateError(failures, 'One or more pending file saves failed.');
+    };
 
-    await Promise.allSettled(
-      openFiles.map(file => saveFile(file.path, file.content ?? '', currentProject.id))
-    );
+    const operation = autosaveInFlight.current.then(saveBatch);
+    autosaveInFlight.current = operation.catch(() => {});
+    await operation;
   };
 
   // Bootstrap
@@ -85,43 +105,68 @@ export default function App() {
       await initializeStorage();
       const list = await getProjects();
       setProjects(list || []);
-      // Start Pyodide pre-load in background so it's ready when user runs code
-      preloadPyodideInBackground();
-    })();
+      setWorkspaceError('');
+    })().catch(err => {
+      const message = `Unable to initialize workspace storage: ${err?.message || String(err)}`;
+      console.error(message, err);
+      setWorkspaceError(message);
+    });
   }, []);
 
   // Draggable Resizable Split Handle between Editor & Web Preview
-  const handleSplitDragStart = (e) => {
+  const handleSplitDragStart = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
     isDraggingSplit.current = true;
-    e.preventDefault();
+    splitDragPointerId.current = event.pointerId;
+    document.body.classList.add('is-resizing-split');
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const finishSplitDrag = () => {
+    isDraggingSplit.current = false;
+    splitDragPointerId.current = null;
+    document.body.classList.remove('is-resizing-split');
+  };
+
+  const handleSplitResizeKeyDown = (event) => {
+    const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+    if (!direction) return;
+    event.preventDefault();
+    setSplitRatio(ratio => Math.min(80, Math.max(20, ratio + direction * (event.shiftKey ? 10 : 2))));
   };
 
   useEffect(() => {
-    const onMove = (e) => {
-      if (!isDraggingSplit.current || !splitContainerRef.current) return;
+    const onMove = (event) => {
+      if (!isDraggingSplit.current ||
+          event.pointerId !== splitDragPointerId.current ||
+          !splitContainerRef.current) return;
       const rect = splitContainerRef.current.getBoundingClientRect();
-      const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-      const x = clientX - rect.left;
+      if (rect.width === 0) return;
+      const x = event.clientX - rect.left;
       const pct = Math.min(80, Math.max(20, (x / rect.width) * 100));
       setSplitRatio(pct);
+      event.preventDefault();
     };
-    const onEnd = () => { isDraggingSplit.current = false; };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onEnd);
-    window.addEventListener('touchmove', onMove);
-    window.addEventListener('touchend',  onEnd);
+    const onEnd = (event) => {
+      if (event.pointerId === splitDragPointerId.current) finishSplitDrag();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+    window.addEventListener('blur', finishSplitDrag);
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup',   onEnd);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend',  onEnd);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      window.removeEventListener('blur', finishSplitDrag);
+      document.body.classList.remove('is-resizing-split');
     };
   }, []);
 
   useEffect(() => {
     const persistOnLeave = () => {
-      clearTimeout(autoSaveTimer.current);
-      flushPendingAutosave();
+      flushPendingAutosave().catch(err => console.error('Unable to flush pending file saves.', err));
     };
 
     const handleVisibilityChange = () => {
@@ -143,15 +188,20 @@ export default function App() {
 
   // Open project → switch to editor
   const openProject = async (project) => {
-    setCurrentProject(project);
-    const projFiles = await getProjectFiles(project.id);
-    setFiles(projFiles);
-    setOpenFiles(projFiles);
-    setActiveFile(projFiles[0] ?? null);
-    setSplitView(project.type === 'web');
-    setConsoleVisible(false);
-    setView('editor');
-    if (window.innerWidth <= 768) setSidebarCollapsed(true);
+    try {
+      await flushPendingAutosave();
+      const projFiles = await getProjectFiles(project.id);
+      setCurrentProject(project);
+      setFiles(projFiles);
+      setOpenFiles(projFiles);
+      setActiveFile(projFiles[0] ?? null);
+      setSplitView(project.type === 'web' && window.innerWidth > 768);
+      setConsoleVisible(false);
+      setView('editor');
+      if (window.innerWidth <= 768) setSidebarCollapsed(true);
+    } catch (err) {
+      reportError('Unable to open project', err);
+    }
   };
 
   const handleSelectProjectById = (id) => {
@@ -160,8 +210,9 @@ export default function App() {
   };
 
   // Tabs
-  const handleSelectFile = (file) => {
+  const handleSelectFile = (file, lineNumber) => {
     setActiveFile(file);
+    setPendingLine(lineNumber ?? null);
     if (!openFiles.some(f => f.path === file.path)) {
       setOpenFiles(prev => [...prev, file]);
     }
@@ -194,30 +245,48 @@ export default function App() {
     setFiles(prev     => prev.map(f => f.path === updated.path ? updated : f));
     setOpenFiles(prev => prev.map(f => f.path === updated.path ? updated : f));
 
+    pendingAutosaves.current.set(updated.path, {
+      path: updated.path,
+      content: newContent,
+      projectId: currentProject.id
+    });
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(async () => {
-      await saveFile(updated.path, newContent, currentProject.id);
+    autoSaveTimer.current = setTimeout(() => {
+      flushPendingAutosave().catch(err => {
+        setConsoleVisible(true);
+        addLog(`Autosave failed: ${err.message}`, 'stderr');
+      });
     }, 600);
   };
 
   // File CRUD
   const handleCreateFile = async (fileName) => {
     if (!currentProject) return;
-    const newPath = `${currentProject.id}/${fileName}`;
-    const displayName = fileName.split('/').pop();
-    const newFile = await saveFile(newPath, '', currentProject.id);
-    const fileWithName = { ...newFile, name: fileName };
-    setFiles(prev => [...prev, fileWithName]);
-    if (!displayName.startsWith('.gitkeep')) {
-      setOpenFiles(prev => [...prev, fileWithName]);
-      setActiveFile(fileWithName);
+    try {
+      const newPath = `${currentProject.id}/${fileName}`;
+      const displayName = fileName.split('/').pop();
+      const newFile = await saveFile(newPath, '', currentProject.id);
+      const fileWithName = { ...newFile, name: fileName };
+      setFiles(prev => [...prev, fileWithName]);
+      if (!displayName.startsWith('.gitkeep')) {
+        setOpenFiles(prev => [...prev, fileWithName]);
+        setActiveFile(fileWithName);
+      }
+    } catch (err) {
+      reportError('Unable to create file', err);
     }
   };
 
   const handleDeleteFile = async (filePath) => {
-    await deleteFile(filePath);
-    setFiles(prev => prev.filter(f => f.path !== filePath));
-    handleCloseTab(filePath);
+    try {
+      await flushPendingAutosave();
+      await deleteFile(filePath);
+      setFiles(prev => prev.filter(f => f.path !== filePath));
+      handleCloseTab(filePath);
+    } catch (err) {
+      setConsoleVisible(true);
+      addLog(`Unable to delete file: ${err.message}`, 'stderr');
+    }
   };
 
   const handleOpenRenameFile = (file) => {
@@ -227,10 +296,15 @@ export default function App() {
 
   // Project CRUD
   const handleCreateNewProject = async (name, type) => {
-    const { project } = await createNewProject(name, type);
-    const list = await getProjects();
-    setProjects(list);
-    openProject(project);
+    try {
+      const { project } = await createNewProject(name, type);
+      const list = await getProjects();
+      setProjects(list);
+      await openProject(project);
+    } catch (err) {
+      reportError('Unable to create project', err);
+      throw err;
+    }
   };
 
   const handleOpenRenameProject = (project) => {
@@ -241,31 +315,37 @@ export default function App() {
   const handleConfirmRename = async (newName) => {
     if (!renameTarget) return;
 
-    if (renameTarget.type === 'project') {
-      const projId = renameTarget.item.id;
-      await renameProject(projId, newName);
-      setProjects(prev => prev.map(p => p.id === projId ? { ...p, name: newName } : p));
-      if (currentProject?.id === projId) {
-        setCurrentProject(prev => prev ? { ...prev, name: newName } : null);
+    try {
+      await flushPendingAutosave();
+      if (renameTarget.type === 'project') {
+        const projId = renameTarget.item.id;
+        await renameProject(projId, newName);
+        setProjects(prev => prev.map(p => p.id === projId ? { ...p, name: newName } : p));
+        if (currentProject?.id === projId) {
+          setCurrentProject(prev => prev ? { ...prev, name: newName } : null);
+        }
+      } else if (renameTarget.type === 'file') {
+        const file = renameTarget.item;
+        const pathParts = file.path.split('/');
+        pathParts[pathParts.length - 1] = newName;
+        const newPath = pathParts.join('/');
+
+        const nameParts = file.name.split('/');
+        nameParts[nameParts.length - 1] = newName;
+        const newDisplayName = nameParts.join('/');
+
+        const updatedFile = await renameFile(file.path, newPath, currentProject.id);
+        const fileWithDisplayName = { ...updatedFile, name: newDisplayName };
+
+        setFiles(prev => prev.map(f => f.path === file.path ? fileWithDisplayName : f));
+        setOpenFiles(prev => prev.map(f => f.path === file.path ? fileWithDisplayName : f));
+        if (activeFile?.path === file.path) {
+          setActiveFile(fileWithDisplayName);
+        }
       }
-    } else if (renameTarget.type === 'file') {
-      const file = renameTarget.item;
-      const pathParts = file.path.split('/');
-      pathParts[pathParts.length - 1] = newName;
-      const newPath = pathParts.join('/');
-
-      const nameParts = file.name.split('/');
-      nameParts[nameParts.length - 1] = newName;
-      const newDisplayName = nameParts.join('/');
-
-      const updatedFile = await renameFile(file.path, newPath, currentProject.id);
-      const fileWithDisplayName = { ...updatedFile, name: newDisplayName };
-
-      setFiles(prev => prev.map(f => f.path === file.path ? fileWithDisplayName : f));
-      setOpenFiles(prev => prev.map(f => f.path === file.path ? fileWithDisplayName : f));
-      if (activeFile?.path === file.path) {
-        setActiveFile(fileWithDisplayName);
-      }
+    } catch (err) {
+      reportError('Unable to rename item', err);
+      throw err;
     }
   };
 
@@ -276,6 +356,7 @@ export default function App() {
       message: 'Permanently delete this project and all its files? This action cannot be undone.',
       confirmText: 'Delete Project',
       action: async () => {
+        await flushPendingAutosave();
         await deleteProject(projId);
         const list = await getProjects();
         setProjects(list);
@@ -302,6 +383,7 @@ export default function App() {
       message: 'Permanently remove ALL projects from workspace? Zero projects will be left behind.',
       confirmText: 'Remove All',
       action: async () => {
+        await flushPendingAutosave();
         await deleteAllProjects();
         setProjects([]);
         setCurrentProject(null);
@@ -343,6 +425,13 @@ export default function App() {
     });
   };
 
+  const reportError = (label, error) => {
+    const message = `${label}: ${error?.message || String(error)}`;
+    console.error(message, error);
+    setConsoleVisible(true);
+    addLog(message, 'stderr');
+  };
+
   const handleRunCode = async () => {
     setConsoleVisible(true);
     setLogs([]);
@@ -350,14 +439,21 @@ export default function App() {
     if (currentProject?.type === 'python') {
       setIsRunning(true);
       addLog('Executing Python 3.11 WASM Engine...', 'info');
-      await runPythonCode(
-        activeFile?.content || '',
-        (t, type) => addLog(t, type),
-        (t, type) => addLog(t, type),
-        (url) => setPlots(prev => [...prev, url])
-      );
-      setIsRunning(false);
-    } else {
+      try {
+        await runPythonCode(
+          activeFile?.content || '',
+          (t, type) => addLog(t, type),
+          (t, type) => addLog(t, type),
+          (url) => setPlots(prev => [...prev, url])
+        );
+      } catch (err) {
+        addLog(`Python execution failed: ${err.message}`, 'stderr');
+      } finally {
+        setIsRunning(false);
+      }
+    } else if (currentProject?.type === 'web') {
+      setSplitView(true);
+      setPreviewRefreshToken(token => token + 1);
       addLog('Web Preview refreshed.', 'success');
     }
   };
@@ -365,15 +461,40 @@ export default function App() {
   const afterProjectLoad = async (project) => {
     const list = await getProjects();
     setProjects(list);
-    if (project) openProject(project);
+    if (project) await openProject(project);
   };
 
-  const handleExportZip = () => {
-    if (currentProject && files.length > 0) exportProjectZip(currentProject, files);
+  const handleExportZip = async () => {
+    try {
+      await flushPendingAutosave();
+      if (currentProject && files.length > 0) await exportProjectZip(currentProject, files);
+    } catch (err) {
+      reportError('Unable to export project archive', err);
+    }
   };
 
   return (
-    <div className="app-container">
+    <>
+    <a className="skip-link" href="#main-content">Skip to main content</a>
+    <div className="app-container" id="workspace">
+      {workspaceError && (
+        <div role="alert" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '10px 16px',
+          background: 'rgba(241, 76, 76, 0.15)',
+          borderBottom: '1px solid var(--accent-red)',
+          color: 'var(--text-bright)',
+          fontSize: 13
+        }}>
+          <span>{workspaceError}</span>
+          <button type="button" className="icon-btn" onClick={() => setWorkspaceError('')} aria-label="Dismiss storage error">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* ── DASHBOARD ── */}
       {view === 'dashboard' && (
@@ -385,6 +506,7 @@ export default function App() {
           onRenameProject={handleOpenRenameProject}
           onDeleteProject={handleDeleteProject}
           onDeleteAllProjects={handleDeleteAllProjects}
+          id="main-content"
         />
       )}
 
@@ -405,12 +527,16 @@ export default function App() {
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onExportZip={handleExportZip}
             onGoToDashboard={async () => {
-              await flushPendingAutosave();
-              setView('dashboard');
+              try {
+                await flushPendingAutosave();
+                setView('dashboard');
+              } catch (err) {
+                reportError('Unable to leave the editor because pending changes could not be saved', err);
+              }
             }}
           />
 
-          <div className="main-layout">
+          <div className="main-layout" id="main-content" tabIndex={-1}>
             {/* Sidebar backdrop on mobile */}
             {!sidebarCollapsed && window.innerWidth <= 768 && (
               <div
@@ -463,6 +589,8 @@ export default function App() {
                     file={activeFile}
                     onCodeChange={handleCodeChange}
                     editorRef={editorRef}
+                    lineToReveal={pendingLine}
+                    onLineRevealed={() => setPendingLine(null)}
                   />
                 </div>
 
@@ -470,8 +598,16 @@ export default function App() {
                 {splitView && currentProject?.type === 'web' && window.innerWidth > 768 && (
                   <div
                     className="split-resizer"
-                    onMouseDown={handleSplitDragStart}
-                    onTouchStart={handleSplitDragStart}
+                    onPointerDown={handleSplitDragStart}
+                    onLostPointerCapture={finishSplitDrag}
+                    onKeyDown={handleSplitResizeKeyDown}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize editor and preview"
+                    aria-valuenow={Math.round(splitRatio)}
+                    aria-valuemin={20}
+                    aria-valuemax={80}
+                    tabIndex={0}
                     title="Drag to resize split view"
                   />
                 )}
@@ -489,6 +625,8 @@ export default function App() {
                   >
                     <WebPreview
                       files={files}
+                      entryFilePath={/\.html?$/i.test(activeFile?.name || '') ? activeFile.path : undefined}
+                      refreshToken={previewRefreshToken}
                       isVisible={splitView}
                       onConsoleLog={addLog}
                     />
@@ -551,5 +689,6 @@ export default function App() {
         onExportZip={handleExportZip}
       />
     </div>
+    </>
   );
 }

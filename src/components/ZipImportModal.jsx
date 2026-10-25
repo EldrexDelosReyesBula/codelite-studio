@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, FileArchive, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Upload, FileArchive, CheckCircle, AlertCircle } from './icons';
 import { importZipFile } from '../services/storageManager';
 
 export default function ZipImportModal({ isOpen, onClose, onProjectImported }) {
@@ -23,24 +23,29 @@ export default function ZipImportModal({ isOpen, onClose, onProjectImported }) {
 
     try {
       const { project, files } = await importZipFile(selectedFile);
-      setIsUploading(false);
-      onProjectImported(project, files);
+      await onProjectImported(project, files);
       onClose();
     } catch (err) {
-      setIsUploading(false);
       setErrorMsg(`ZIP Extraction Failed: ${err.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-overlay"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !isUploading) onClose();
+      }}
+    >
+      <div className="modal-card" role="dialog" aria-modal="true" aria-label="Import ZIP project" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileArchive size={18} color="var(--accent-yellow)" />
             <span>Import ZIP Project Package</span>
           </div>
-          <button className="icon-btn" onClick={onClose} disabled={isUploading}>
+          <button className="icon-btn" onClick={onClose} disabled={isUploading} aria-label="Close ZIP import dialog">
             <X size={16} />
           </button>
         </div>
@@ -51,6 +56,7 @@ export default function ZipImportModal({ isOpen, onClose, onProjectImported }) {
           </p>
 
           <label
+            className="zip-upload-label"
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -73,16 +79,17 @@ export default function ZipImportModal({ isOpen, onClose, onProjectImported }) {
               Supports Python, HTML/CSS/JS, and JSON project zip archives
             </span>
             <input
+              className="visually-hidden"
               type="file"
+              name="projectArchive"
               accept=".zip"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
               disabled={isUploading}
             />
           </label>
 
           {errorMsg && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(241, 76, 76, 0.15)', border: '1px solid var(--accent-red)', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', color: '#F87171' }}>
+            <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(241, 76, 76, 0.15)', border: '1px solid var(--accent-red)', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', color: '#F87171' }}>
               <AlertCircle size={16} />
               <span>{errorMsg}</span>
             </div>

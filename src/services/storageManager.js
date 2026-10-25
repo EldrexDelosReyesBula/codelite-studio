@@ -251,8 +251,9 @@ export async function getDB() {
         }
       }
     }).catch(err => {
-      console.warn('IndexedDB opening failed, using memory store fallback:', err);
-      return null;
+      console.error('IndexedDB could not be opened; project data cannot be persisted.', err);
+      dbPromise = null;
+      throw err;
     });
   }
   return dbPromise;
@@ -279,6 +280,7 @@ export async function initializeStorage() {
     }
   } catch (err) {
     console.warn('initializeStorage error:', err);
+    throw err;
   }
 }
 
@@ -287,10 +289,12 @@ export async function getProjects() {
     const db = await getDB();
     if (db) {
       const projList = await db.getAll('projects');
-      if (projList) return projList;
+      memoryProjects = projList;
+      return projList;
     }
   } catch (err) {
     console.warn('getProjects error:', err);
+    throw err;
   }
   return memoryProjects;
 }
@@ -300,17 +304,28 @@ export async function getProjectFiles(projectId) {
     const db = await getDB();
     if (db) {
       const allFiles = await db.getAll('files');
-      const filtered = allFiles.filter(f => f.projectId === projectId);
-      if (filtered.length > 0) return filtered;
+      const projectFiles = allFiles
+        .filter(file => file.projectId === projectId)
+        .map(file => ({
+          ...file,
+          name: file.path.startsWith(`${projectId}/`)
+            ? file.path.slice(projectId.length + 1)
+            : file.name
+        }));
+      memoryFiles = memoryFiles.filter(file => file.projectId !== projectId).concat(projectFiles);
+      return projectFiles;
     }
   } catch (err) {
     console.warn('getProjectFiles error:', err);
+    throw err;
   }
   return memoryFiles.filter(f => f.projectId === projectId);
 }
 
 export async function saveFile(path, content, projectId) {
-  const fileName = path.split('/').pop();
+  const fileName = path.startsWith(`${projectId}/`)
+    ? path.slice(projectId.length + 1)
+    : path.split('/').pop();
   const fileObj = {
     path,
     projectId,
@@ -320,86 +335,90 @@ export async function saveFile(path, content, projectId) {
     lastModified: Date.now()
   };
 
-  const idx = memoryFiles.findIndex(f => f.path === path);
-  if (idx >= 0) {
-    memoryFiles[idx] = fileObj;
-  } else {
-    memoryFiles.push(fileObj);
-  }
-
   try {
     const db = await getDB();
     if (db) {
       await db.put('files', fileObj);
     }
   } catch (err) {
-    console.warn('saveFile error:', err);
+    console.error(`Unable to persist file "${path}".`, err);
+    throw err;
   }
+
+  const idx = memoryFiles.findIndex(f => f.path === path);
+  if (idx >= 0) memoryFiles[idx] = fileObj;
+  else memoryFiles.push(fileObj);
 
   return fileObj;
 }
 
 export async function deleteFile(path) {
-  memoryFiles = memoryFiles.filter(f => f.path !== path);
   try {
     const db = await getDB();
     if (db) {
       await db.delete('files', path);
     }
   } catch (err) {
-    console.warn('deleteFile error:', err);
+    console.error(`Unable to delete file "${path}".`, err);
+    throw err;
   }
+  memoryFiles = memoryFiles.filter(f => f.path !== path);
 }
 
 export async function renameFile(oldPath, newPath, projectId) {
-  const newFileName = newPath.split('/').pop();
-  let existingContent = '';
+  const name = newPath.startsWith(`${projectId}/`)
+    ? newPath.slice(projectId.length + 1)
+    : newPath.split('/').pop();
+  let existingContent = memoryFiles.find(f => f.path === oldPath)?.content || '';
 
-  const idx = memoryFiles.findIndex(f => f.path === oldPath);
-  if (idx >= 0) {
-    existingContent = memoryFiles[idx].content || '';
-    memoryFiles.splice(idx, 1);
+  try {
+    const db = await getDB();
+    if (db) {
+      const transaction = db.transaction('files', 'readwrite');
+      const existing = await transaction.store.get(oldPath);
+      if (!existing) throw new Error(`Cannot rename missing file "${oldPath}".`);
+      if (await transaction.store.get(newPath)) {
+        throw new Error(`A file named "${name}" already exists.`);
+      }
+      const updatedFile = {
+        ...existing,
+        path: newPath,
+        name,
+        lastModified: Date.now()
+      };
+      await transaction.store.delete(oldPath);
+      await transaction.store.put(updatedFile);
+      await transaction.done;
+      memoryFiles = memoryFiles.filter(f => f.path !== oldPath);
+      memoryFiles.push(updatedFile);
+      return updatedFile;
+    }
+  } catch (err) {
+    console.error(`Unable to rename file "${oldPath}".`, err);
+    throw err;
   }
 
   const updatedFile = {
     path: newPath,
     projectId,
-    name: newFileName,
+    name,
     type: 'file',
     content: existingContent,
     lastModified: Date.now()
   };
-
+  memoryFiles = memoryFiles.filter(f => f.path !== oldPath);
   memoryFiles.push(updatedFile);
-
-  try {
-    const db = await getDB();
-    if (db) {
-      const existing = await db.get('files', oldPath);
-      if (existing) {
-        updatedFile.content = existing.content || existingContent;
-      }
-      await db.delete('files', oldPath);
-      await db.put('files', updatedFile);
-    }
-  } catch (err) {
-    console.warn('renameFile error:', err);
-  }
-
   return updatedFile;
 }
 
-export async function createNewProject(name, type) {
-  const projectId = `proj-${Date.now()}`;
+export async function createNewProject(name, type, importedFiles) {
+  const projectId = `proj-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const project = {
     id: projectId,
     name,
     type,
     lastOpened: Date.now()
   };
-
-  memoryProjects.push(project);
-  localStorage.removeItem('codelite_storage_wiped');
 
   let initialFiles = [];
   if (type === 'python') {
@@ -431,31 +450,34 @@ export async function createNewProject(name, type) {
     ];
   }
 
-  for (const f of initialFiles) {
-    memoryFiles.push(f);
-  }
+  initialFiles = (importedFiles ?? initialFiles).map(file => ({
+    ...file,
+    path: `${projectId}/${file.name}`,
+    projectId,
+    type: 'file'
+  }));
 
   try {
     const db = await getDB();
     if (db) {
-      await db.put('projects', project);
-      for (const f of initialFiles) {
-        await db.put('files', f);
-      }
+      const transaction = db.transaction(['projects', 'files'], 'readwrite');
+      await transaction.objectStore('projects').put(project);
+      for (const file of initialFiles) await transaction.objectStore('files').put(file);
+      await transaction.done;
     }
   } catch (err) {
-    console.warn('createNewProject error:', err);
+    console.error(`Unable to create project "${name}".`, err);
+    throw err;
   }
+
+  memoryProjects.push(project);
+  memoryFiles.push(...initialFiles);
+  localStorage.removeItem('codelite_storage_wiped');
 
   return { project, files: initialFiles };
 }
 
 export async function renameProject(projectId, newName) {
-  const proj = memoryProjects.find(p => p.id === projectId);
-  if (proj) {
-    proj.name = newName;
-  }
-
   try {
     const db = await getDB();
     if (db) {
@@ -463,93 +485,96 @@ export async function renameProject(projectId, newName) {
       if (p) {
         p.name = newName;
         await db.put('projects', p);
+        const memoryProject = memoryProjects.find(project => project.id === projectId);
+        if (memoryProject) memoryProject.name = newName;
+        return p;
       }
     }
   } catch (err) {
-    console.warn('renameProject error:', err);
+    console.error(`Unable to rename project "${projectId}".`, err);
+    throw err;
   }
 
-  return proj;
+  const project = memoryProjects.find(item => item.id === projectId);
+  if (project) project.name = newName;
+  return project;
 }
 
 export async function deleteProject(projectId) {
-  memoryProjects = memoryProjects.filter(p => p.id !== projectId);
-  memoryFiles = memoryFiles.filter(f => f.projectId !== projectId);
-
-  if (memoryProjects.length === 0) {
-    localStorage.setItem('codelite_storage_wiped', 'true');
-  }
-
+  let remainingProjects = memoryProjects.length;
   try {
     const db = await getDB();
     if (db) {
-      await db.delete('projects', projectId);
-      const allFiles = await db.getAll('files');
-      for (const f of allFiles) {
-        if (f.projectId === projectId) {
-          await db.delete('files', f.path);
-        }
-      }
-      const remainingProjects = await db.getAll('projects');
-      if (remainingProjects.length === 0) {
-        localStorage.setItem('codelite_storage_wiped', 'true');
-      }
+      const transaction = db.transaction(['projects', 'files'], 'readwrite');
+      const projectsStore = transaction.objectStore('projects');
+      await projectsStore.delete(projectId);
+      const files = await transaction.objectStore('files').index('projectId').getAllKeys(projectId);
+      for (const path of files) await transaction.objectStore('files').delete(path);
+      remainingProjects = await projectsStore.count();
+      await transaction.done;
     }
   } catch (err) {
-    console.warn('deleteProject error:', err);
+    console.error(`Unable to delete project "${projectId}".`, err);
+    throw err;
   }
+
+  memoryProjects = memoryProjects.filter(project => project.id !== projectId);
+  memoryFiles = memoryFiles.filter(file => file.projectId !== projectId);
+  if (remainingProjects === 0) localStorage.setItem('codelite_storage_wiped', 'true');
 }
 
 export async function deleteAllProjects() {
-  memoryProjects = [];
-  memoryFiles = [];
-  localStorage.setItem('codelite_storage_wiped', 'true');
-
   try {
     const db = await getDB();
     if (db) {
-      await db.clear('projects');
-      await db.clear('files');
+      const transaction = db.transaction(['projects', 'files'], 'readwrite');
+      await transaction.objectStore('projects').clear();
+      await transaction.objectStore('files').clear();
+      await transaction.done;
     }
   } catch (err) {
-    console.warn('deleteAllProjects error:', err);
+    console.error('Unable to delete all projects.', err);
+    throw err;
   }
+
+  memoryProjects = [];
+  memoryFiles = [];
+  localStorage.setItem('codelite_storage_wiped', 'true');
 }
 
 // Extract uploaded ZIP archive into new project workspace
 export async function importZipFile(file) {
   const zipName = file.name.replace(/\.zip$/i, '');
   const zip = await JSZip.loadAsync(file);
-
-  let projectType = 'web';
-  const fileNames = Object.keys(zip.files);
-
-  if (fileNames.some(f => f.endsWith('.py'))) {
-    projectType = 'python';
-  }
-
-  const { project } = await createNewProject(zipName, projectType);
+  const entries = Object.entries(zip.files).filter(([, entry]) => !entry.dir);
+  const firstSegments = entries.map(([path]) => path.replace(/\\/g, '/').split('/')[0]);
+  const rootFolder = firstSegments.length > 0 &&
+    firstSegments.every(segment => segment === firstSegments[0]) &&
+    entries.every(([path]) => path.replace(/\\/g, '/').split('/').length > 1)
+    ? firstSegments[0]
+    : null;
   const importedFiles = [];
 
-  for (const relativePath of fileNames) {
-    const zipEntry = zip.files[relativePath];
-    if (zipEntry.dir) continue;
-
-    const fileName = relativePath.split('/').pop();
-    if (!fileName || fileName.startsWith('.')) continue;
-
-    if (/\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|pdf|exe|dll)$/i.test(fileName)) {
-      continue;
+  for (const [archivePath, entry] of entries) {
+    const normalizedPath = archivePath.replace(/\\/g, '/');
+    const segments = normalizedPath.split('/').filter(Boolean);
+    if (segments.some(segment => segment === '..') || normalizedPath.startsWith('/')) {
+      throw new Error(`The ZIP archive contains an unsafe path: "${archivePath}".`);
     }
 
-    const content = await zipEntry.async('string');
-    const filePath = `${project.id}/${relativePath}`;
-
-    const fileObj = await saveFile(filePath, content, project.id);
-    importedFiles.push(fileObj);
+    const pathSegments = rootFolder && segments[0] === rootFolder ? segments.slice(1) : segments;
+    if (pathSegments.length === 0 || pathSegments.includes('node_modules')) continue;
+    const name = pathSegments.join('/');
+    if (/\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|pdf|exe|dll)$/i.test(name)) continue;
+    importedFiles.push({ name, content: await entry.async('string') });
   }
 
-  return { project, files: importedFiles };
+  if (importedFiles.length === 0) {
+    throw new Error('The ZIP archive does not contain any supported project files.');
+  }
+
+  const projectType = importedFiles.some(entry => entry.name.endsWith('.py')) ? 'python' : 'web';
+  return createNewProject(zipName, projectType, importedFiles);
 }
 
 // Open native directory using File System Access API

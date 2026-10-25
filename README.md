@@ -20,6 +20,7 @@ CodeLite Studio is a client-side Web IDE designed for developers. It enables fas
 
 - 🌐 **Live Web Application Preview:**
   - Build HTML5, CSS3, and JavaScript ES6+ web apps with instant live preview.
+  - Run the active HTML file regardless of its filename; linked project CSS and JavaScript are included only while referenced by that HTML.
   - **Flexible Resizable Split View:** Drag the central split resizer handle to adjust the Editor and Web Preview ratio dynamically (20% to 80%).
 
 - 🔍 **Global Project Code & File Search:**
@@ -35,7 +36,14 @@ CodeLite Studio is a client-side Web IDE designed for developers. It enables fas
 - 📱 **Mobile & Desktop Optimized UX:**
   - **Collapsible Console Status Bar:** The console collapses into a minimal 28px bottom status bar when idle, giving over **80% vertical height** to the code editor.
   - **Collapsible Touch Symbol Bar:** Quick symbol keys (`{`, `}`, `(`, `)`, `;`, `def`, `=>`) above the mobile keyboard with an easy collapse toggle.
+  - **Mobile Clipboard Controls:** Copy a selection or the full file and paste code from the device clipboard using the editor toolbar.
+  - **Code Formatting:** Format HTML, CSS, JavaScript, TypeScript, JSON, and Markdown from the editor toolbar or `Alt+Shift+F`; pasted code is formatted automatically.
+  - **Reliable Resizing:** Pointer-based editor/preview and console splitters support touch, keyboard adjustment, and bounded sizing.
   - **Instant Tab Creation:** Click `+` right on the tab bar to create files instantly.
+
+- 🔎 **SEO & Static Rendering:**
+  - Production builds prerender a semantic landing page for crawlers and social previews before the interactive IDE starts.
+  - Includes canonical URL, sitemap/robots directives, Open Graph and Twitter metadata, and SoftwareApplication structured data.
 
 ---
 
@@ -45,8 +53,9 @@ CodeLite Studio is a client-side Web IDE designed for developers. It enables fas
 |---|---|---|
 | **Core UI** | React 18 & Vite 6 | Fast modular UI component tree & build tooling |
 | **Code Editor** | Monaco Editor (`@monaco-editor/react`) | VS Code editing engine with syntax highlighting |
+| **Formatting** | Prettier | On-demand and paste-triggered formatting for HTML, CSS, JS, TS, JSON, and Markdown |
 | **Python WASM** | Pyodide 0.25 | Python 3.11 runtime with NumPy & Matplotlib |
-| **Icons** | Lucide React | Clean HIG & developer iconography |
+| **Icons** | Solar Icons React (Line Duotone) | Consistent line-duotone interface icons |
 | **Storage** | IndexedDB (`idb`) | Browser database persistent workspace storage |
 | **Archiving** | JSZip & FileSaver | ZIP archive extraction and generation |
 

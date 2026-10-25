@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Folder, Play, Columns } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Folder, Play, Columns } from './icons';
 
 const STEPS = [
   {
@@ -20,7 +20,7 @@ const STEPS = [
   {
     title: 'Developer Symbol Bar',
     icon: <Columns size={40} color="#CE9178" />,
-    content: 'On mobile devices, use the touch symbol bar to quickly insert programming tokens (Tab, {}, (), [], ;, ", \') without leaving your code.'
+    content: 'On mobile devices, use Copy and Paste in the editor toolbar to move code from your clipboard, and use the touch symbol bar to quickly insert programming tokens without leaving your code.'
   }
 ];
 

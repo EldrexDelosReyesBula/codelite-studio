@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Terminal, Trash2, X, ChevronDown, ChevronUp, 
   CheckCircle, AlertTriangle, Info, Image 
-} from 'lucide-react';
+} from './icons';
 
 const MIN_HEIGHT = 32;
 const DEFAULT_HEIGHT = 200;
@@ -13,6 +13,7 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
   const [isMinimized, setIsMinimized] = useState(false);
   const logEndRef                     = useRef(null);
   const dragging                      = useRef(false);
+  const dragPointerId                 = useRef(null);
   const dragStartY                    = useRef(0);
   const dragStartH                    = useRef(DEFAULT_HEIGHT);
 
@@ -24,45 +25,75 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
   }, [logs, plots, isMinimized, isVisible]);
 
   /* ── Drag-to-resize ── */
-  const onDragStart = useCallback((e) => {
-    dragging.current  = true;
-    dragStartY.current = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+  const onDragStart = useCallback((event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    dragging.current = true;
+    dragPointerId.current = event.pointerId;
+    dragStartY.current = event.clientY;
     dragStartH.current = height;
-    e.preventDefault();
+    document.body.classList.add('is-resizing-console');
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
   }, [height]);
 
+  const resizeWithKeyboard = (event) => {
+    const direction = event.key === 'ArrowUp' ? 1 : event.key === 'ArrowDown' ? -1 : 0;
+    if (!direction) return;
+    event.preventDefault();
+    const maxHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, window.innerHeight - 96));
+    setHeight(current => Math.min(maxHeight, Math.max(MIN_HEIGHT, current + direction * (event.shiftKey ? 48 : 16))));
+    setIsMinimized(false);
+  };
+
   useEffect(() => {
-    const onMove = (e) => {
-      if (!dragging.current) return;
-      const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    const onMove = (event) => {
+      if (!dragging.current || event.pointerId !== dragPointerId.current) return;
+      const y = event.clientY;
       const delta = dragStartY.current - y;
-      const newH = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, dragStartH.current + delta));
+      const maxHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, window.innerHeight - 96));
+      const newH = Math.min(maxHeight, Math.max(MIN_HEIGHT, dragStartH.current + delta));
       setHeight(newH);
       if (newH > MIN_HEIGHT + 4) setIsMinimized(false);
+      event.preventDefault();
     };
-    const onEnd = () => { dragging.current = false; };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onEnd);
-    window.addEventListener('touchmove', onMove, { passive: true });
-    window.addEventListener('touchend',  onEnd);
+    const onEnd = (event) => {
+      if (event.pointerId !== dragPointerId.current) return;
+      dragging.current = false;
+      dragPointerId.current = null;
+      document.body.classList.remove('is-resizing-console');
+    };
+    const onBlur = () => {
+      dragging.current = false;
+      dragPointerId.current = null;
+      document.body.classList.remove('is-resizing-console');
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+    window.addEventListener('blur', onBlur);
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup',   onEnd);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend',  onEnd);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      window.removeEventListener('blur', onBlur);
+      document.body.classList.remove('is-resizing-console');
     };
   }, []);
 
   if (!isVisible) {
     return (
-      <div
+      <button
+        type="button"
         className="drawer-collapsed-bar"
         onClick={() => onToggleOpen && onToggleOpen()}
         title="Click to open execution console"
+        aria-label="Open execution console"
+        style={{ width: '100%', border: 0, textAlign: 'left', color: 'inherit' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Terminal size={13} color="var(--accent-light)" />
-          <span>Execution Console &amp; Output</span>
+          <span className="drawer-title-full">Execution Console &amp; Output</span>
+          <span className="drawer-title-mobile">Console</span>
           {logs.length > 0 && (
             <span style={{ fontSize: 10, background: 'var(--bg-darkest)', padding: '1px 6px', borderRadius: 10, color: '#4FC1FF' }}>
               {logs.length}
@@ -73,7 +104,7 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Expand</span>
           <ChevronUp size={12} color="var(--text-muted)" />
         </div>
-      </div>
+      </button>
     );
   }
 
@@ -94,8 +125,20 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
     >
       {/* ── Drag handle ── */}
       <div
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
+        onPointerDown={onDragStart}
+        onLostPointerCapture={() => {
+          dragging.current = false;
+          dragPointerId.current = null;
+          document.body.classList.remove('is-resizing-console');
+        }}
+        onKeyDown={resizeWithKeyboard}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize console"
+        aria-valuenow={displayHeight}
+        aria-valuemin={MIN_HEIGHT}
+        aria-valuemax={Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, window.innerHeight - 96))}
+        tabIndex={0}
         style={{
           height: 8, cursor: 'row-resize',
           background: 'var(--border-light)',
@@ -113,7 +156,8 @@ export default function ConsoleDrawer({ logs, plots, onClear, isVisible, onClose
       <div className="drawer-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Terminal size={14} color="var(--accent-light)" />
-          <span style={{ fontWeight: 600 }}>Execution Console &amp; Output</span>
+          <span className="drawer-title-full" style={{ fontWeight: 600 }}>Execution Console &amp; Output</span>
+          <span className="drawer-title-mobile" style={{ fontWeight: 600 }}>Console</span>
           {logs.length > 0 && (
             <span style={{
               fontSize: 10, background: 'var(--bg-darkest)',

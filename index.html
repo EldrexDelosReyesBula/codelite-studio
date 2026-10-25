@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta http-equiv="Content-Language" content="en" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <meta name="googlebot" content="index,follow" />
@@ -10,10 +10,9 @@
     <meta name="keywords" content="CodeLite Studio, Python IDE, online Python editor, web IDE, browser coding platform, online code editor, Pyodide, Matplotlib, HTML CSS JS IDE, mobile IDE" />
     <meta name="author" content="CodeLite Studio" />
     <meta name="application-name" content="CodeLite Studio" />
-    <meta name="theme-color" content="#1E1E1E" />
+    <meta name="theme-color" content="#12141a" />
     <meta name="color-scheme" content="dark" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta name="canonical" content="https://codelite-studio.vercel.app/" />
     <link rel="canonical" href="https://codelite-studio.vercel.app/" />
 
     <title>CodeLite Studio — Browser Python & Web IDE</title>
@@ -26,6 +25,7 @@
     <meta property="og:url" content="https://codelite-studio.vercel.app/" />
     <meta property="og:image" content="https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png" />
     <meta property="og:image:alt" content="CodeLite Studio logo" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:locale" content="en_US" />
 
     <!-- Twitter / X -->
@@ -33,6 +33,7 @@
     <meta name="twitter:title" content="CodeLite Studio — Browser Python & Web IDE" />
     <meta name="twitter:description" content="Build Python and web apps right from the browser with an offline-friendly mobile IDE." />
     <meta name="twitter:image" content="https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png" />
+    <meta name="twitter:image:alt" content="CodeLite Studio logo" />
 
     <!-- Favicon & Official Logo -->
     <link rel="icon" type="image/x-icon" href="/assets/codelite-studio-logo.ico" />
@@ -65,6 +66,13 @@
         "description": "CodeLite Studio is a browser-based Python and web IDE for coding, project management, previews, and local persistence on mobile and desktop devices.",
         "url": "https://codelite-studio.vercel.app/",
         "image": "https://codelite-studio.vercel.app/assets/codelite-studio-logo-transparent.png",
+        "inLanguage": "en",
+        "softwareVersion": "1.0.2",
+        "featureList": [
+          "Run Python in the browser with Pyodide",
+          "Edit HTML, CSS, and JavaScript with live preview",
+          "Store and export browser-based projects"
+        ],
         "author": {
           "@type": "Organization",
           "name": "CodeLite Studio"
@@ -73,8 +81,6 @@
       }
     </script>
 
-    <!-- Pyodide Python WASM CDN -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
   </head>
   <body>
     <div id="root"></div>

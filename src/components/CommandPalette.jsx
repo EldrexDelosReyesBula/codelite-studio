@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Play, FilePlus, Folder, Download, Columns, Upload, X,
   FileCode, Code2, Palette, FileJson, FileText, CornerDownLeft
-} from 'lucide-react';
+} from './icons';
 
 function getFileIcon(name) {
   if (!name) return <FileText size={14} color="var(--text-muted)" />;
@@ -99,8 +99,8 @@ export default function CommandPalette({
   const totalResults = fileMatches.length + contentMatches.length + commandMatches.length;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="command-palette" onClick={e => e.stopPropagation()} style={{ maxWidth: 620 }}>
+    <div className="modal-overlay command-palette-overlay" onClick={onClose}>
+      <div className="command-palette" role="dialog" aria-modal="true" aria-label="Search IDE commands and files" onClick={e => e.stopPropagation()} style={{ maxWidth: 620 }}>
 
         {/* ── Search Input ── */}
         <div className="command-input-wrapper">
@@ -108,32 +108,39 @@ export default function CommandPalette({
           <input
             type="text"
             className="command-input"
+            aria-label="Search code, files, or commands"
             placeholder="Search code text, file names, or IDE commands…"
             value={query}
             onChange={e => setQuery(e.target.value)}
             autoFocus
           />
-          <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={onClose}>
+          <button type="button" className="icon-btn command-close-btn" style={{ width: 26, height: 26 }} onClick={onClose} aria-label="Close search">
             <X size={14} />
           </button>
         </div>
 
         {/* ── Filter Mode Buttons ── */}
-        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderBottom: '0.5px solid var(--border-light)', background: 'var(--bg-darkest)' }}>
+        <div className="command-filter-bar" style={{ display: 'flex', gap: 6, padding: '8px 12px', borderBottom: '0.5px solid var(--border-light)', background: 'var(--bg-darkest)' }}>
           <button
+            type="button"
             className={`frame-btn ${filterMode === 'all' ? 'active' : ''}`}
+            aria-pressed={filterMode === 'all'}
             onClick={() => setFilterMode('all')}
           >
             All Results ({totalResults})
           </button>
           <button
+            type="button"
             className={`frame-btn ${filterMode === 'code' ? 'active' : ''}`}
+            aria-pressed={filterMode === 'code'}
             onClick={() => setFilterMode('code')}
           >
             Code &amp; Files ({fileMatches.length + contentMatches.length})
           </button>
           <button
+            type="button"
             className={`frame-btn ${filterMode === 'commands' ? 'active' : ''}`}
+            aria-pressed={filterMode === 'commands'}
             onClick={() => setFilterMode('commands')}
           >
             Commands ({commandMatches.length})
@@ -156,11 +163,17 @@ export default function CommandPalette({
                 Code Content Matches ({contentMatches.length})
               </div>
               {contentMatches.slice(0, 8).map((match, idx) => (
-                <div
+                <button
+                  type="button"
                   key={idx}
                   className="command-item"
-                  onClick={() => handleSelectCodeMatch(match.file)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 10px' }}
+                  onClick={() => {
+                    onSelectFile?.(match.file, match.lineNum);
+                    onClose();
+                    setQuery('');
+                  }}
+                  aria-label={`Open ${match.file.name} at line ${match.lineNum}`}
+                  style={{ width: '100%', border: 0, textAlign: 'left', background: 'transparent', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 10px' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-bright)' }}>
                     {getFileIcon(match.file.name)}
@@ -172,7 +185,7 @@ export default function CommandPalette({
                   <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {match.lineText}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -184,10 +197,12 @@ export default function CommandPalette({
                 Project Files ({fileMatches.length})
               </div>
               {fileMatches.map((file) => (
-                <div
+                <button
+                  type="button"
                   key={file.path}
                   className="command-item"
                   onClick={() => handleSelectCodeMatch(file)}
+                  style={{ width: '100%', border: 0, textAlign: 'left', background: 'transparent' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {getFileIcon(file.name)}
@@ -196,7 +211,7 @@ export default function CommandPalette({
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                     Open File <CornerDownLeft size={11} />
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -208,13 +223,13 @@ export default function CommandPalette({
                 IDE Commands ({commandMatches.length})
               </div>
               {commandMatches.map(cmd => (
-                <div key={cmd.id} className="command-item" onClick={() => handleRunCommand(cmd.action)}>
+                <button type="button" key={cmd.id} className="command-item" onClick={() => handleRunCommand(cmd.action)} style={{ width: '100%', border: 0, background: 'transparent', textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {cmd.icon}
                     <span>{cmd.label}</span>
                   </div>
                   {cmd.kbd && <span className="kbd-shortcut">{cmd.kbd}</span>}
-                </div>
+                </button>
               ))}
             </div>
           )}

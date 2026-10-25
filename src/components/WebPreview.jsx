@@ -1,20 +1,62 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RotateCw, ExternalLink, Monitor } from 'lucide-react';
+import { RotateCw, ExternalLink, Monitor } from './icons';
 
-export default function WebPreview({ files, isVisible, onConsoleLog }) {
+function getAttribute(tag, name) {
+  const match = tag.match(new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'));
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? '';
+}
+
+function resolveProjectFile(reference, htmlPath, projectFiles) {
+  const assetPath = reference.split(/[?#]/, 1)[0].replace(/\\/g, '/');
+  if (!assetPath || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(assetPath)) return null;
+
+  const segments = assetPath.startsWith('/')
+    ? []
+    : htmlPath.split('/').slice(0, -1);
+  for (const segment of assetPath.replace(/^\/+/, '').split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (segments.length === 0) return null;
+      segments.pop();
+    } else {
+      segments.push(segment);
+    }
+  }
+
+  const resolvedPath = segments.join('/');
+  return projectFiles.find(file => file.name === resolvedPath) ?? null;
+}
+
+export default function WebPreview({ files, entryFilePath, refreshToken, isVisible, onConsoleLog }) {
   const iframeRef = useRef(null);
 
   const assembleHTML = () => {
-    const htmlFile = files.find(f => f.name.endsWith('.html')) || files[0];
-    const cssFiles = files.filter(f => f.name.endsWith('.css'));
-    const jsFiles  = files.filter(f => f.name.endsWith('.js'));
+    const htmlFiles = files.filter(file => /\.html?$/i.test(file.name));
+    const htmlFile = htmlFiles.find(file => file.path === entryFilePath) ||
+      htmlFiles.find(file => /^index\.html?$/i.test(file.name)) ||
+      htmlFiles[0];
 
     if (!htmlFile) {
       return '<html><body style="background:#111;color:#fff;font-family:sans-serif;padding:20px;">No HTML file found in project.</body></html>';
     }
 
     let rawHtml = htmlFile.content || '';
-    let cssString = cssFiles.map(c => `<style>${c.content}</style>`).join('\n');
+    rawHtml = rawHtml.replace(/<link\b[^>]*>/gi, (tag) => {
+      const rel = getAttribute(tag, 'rel').toLowerCase().split(/\s+/);
+      const href = getAttribute(tag, 'href');
+      if (!rel.includes('stylesheet')) return tag;
+      const cssFile = resolveProjectFile(href, htmlFile.name, files);
+      return cssFile ? `<style>${cssFile.content || ''}</style>` : tag;
+    });
+    rawHtml = rawHtml.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, (tag) => {
+      const src = getAttribute(tag, 'src');
+      if (!src) return tag;
+      const jsFile = resolveProjectFile(src, htmlFile.name, files);
+      if (!jsFile) return tag;
+      const scriptAttributes = tag.match(/^<script\b([^>]*)>/i)?.[1] || '';
+      const attributesWithoutSrc = scriptAttributes.replace(/\s+src\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i, '');
+      return `<script${attributesWithoutSrc}>${jsFile.content || ''}</script>`;
+    });
 
     const consoleInterceptorScript = `
       <script>
@@ -35,17 +77,10 @@ export default function WebPreview({ files, isVisible, onConsoleLog }) {
       </script>
     `;
 
-    let jsString = jsFiles.map(j => `<script>${j.content}</script>`).join('\n');
-
     if (rawHtml.includes('</head>')) {
-      rawHtml = rawHtml.replace('</head>', `${cssString}${consoleInterceptorScript}</head>`);
+      rawHtml = rawHtml.replace('</head>', `${consoleInterceptorScript}</head>`);
     } else {
-      rawHtml = `${cssString}${consoleInterceptorScript}${rawHtml}`;
-    }
-    if (rawHtml.includes('</body>')) {
-      rawHtml = rawHtml.replace('</body>', `${jsString}</body>`);
-    } else {
-      rawHtml = `${rawHtml}${jsString}`;
+      rawHtml = `${consoleInterceptorScript}${rawHtml}`;
     }
     return rawHtml;
   };
@@ -58,11 +93,15 @@ export default function WebPreview({ files, isVisible, onConsoleLog }) {
 
   useEffect(() => {
     refreshPreview();
-  }, [files]);
+  }, [files, entryFilePath, refreshToken]);
 
   useEffect(() => {
     const handleMessage = (e) => {
-      if (e.data && e.data.type === 'CODEFORGE_CONSOLE') {
+      if (
+        e.source === iframeRef.current?.contentWindow &&
+        e.origin === 'null' &&
+        e.data?.type === 'CODEFORGE_CONSOLE'
+      ) {
         onConsoleLog?.(e.data.message, e.data.logType);
       }
     };
@@ -73,7 +112,15 @@ export default function WebPreview({ files, isVisible, onConsoleLog }) {
   const openInNewTab = () => {
     const html = assembleHTML();
     const win = window.open();
-    if (win) { win.document.write(html); win.document.close(); }
+    if (!win) return;
+    win.opener = null;
+    const frame = win.document.createElement('iframe');
+    frame.title = 'Sandboxed Web Preview';
+    frame.setAttribute('sandbox', 'allow-scripts allow-modals allow-forms allow-popups');
+    frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff';
+    win.document.body.style.margin = '0';
+    win.document.body.append(frame);
+    frame.srcdoc = html;
   };
 
   if (!isVisible) return null;
@@ -83,7 +130,7 @@ export default function WebPreview({ files, isVisible, onConsoleLog }) {
       <div className="preview-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-bright)' }}>
           <Monitor size={14} color="var(--accent-light)" />
-          <span>Live Preview</span>
+          <span>Live Preview{entryFilePath ? ` · ${files.find(file => file.path === entryFilePath)?.name || ''}` : ''}</span>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={refreshPreview} title="Reload Preview">

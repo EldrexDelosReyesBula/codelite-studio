@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, BookOpen, Copy, Check } from 'lucide-react';
+import { X, BookOpen, Copy, Check } from './icons';
 
 const PYTHON_SNIPPETS = [
   {

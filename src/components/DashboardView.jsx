@@ -10,7 +10,7 @@ import {
   Search,
   ChevronRight,
   Edit2
-} from 'lucide-react';
+} from './icons';
 
 function timeAgo(ts) {
   if (!ts) return 'Never';
@@ -31,7 +31,8 @@ export default function DashboardView({
   onOpenZipImport,
   onRenameProject,
   onDeleteProject,
-  onDeleteAllProjects
+  onDeleteAllProjects,
+  id
 }) {
   const [hoveredId, setHoveredId] = useState(null);
   const [search, setSearch] = useState('');
@@ -49,7 +50,7 @@ export default function DashboardView({
   const webProjects    = filtered.filter(p => p.type === 'web');
 
   return (
-    <div style={{
+    <div id={id} className="dashboard-view" tabIndex={-1} style={{
       flex: 1,
       background: 'var(--bg-main)',
       overflowY: 'auto',
@@ -83,7 +84,10 @@ export default function DashboardView({
           {/* Delete All / Wipe Workspace Button */}
           {projects.length > 0 && onDeleteAllProjects && (
             <button
+              type="button"
+              className="dashboard-delete-all"
               onClick={onDeleteAllProjects}
+              aria-label="Remove all projects"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'rgba(248, 81, 73, 0.1)', border: '1px solid rgba(248, 81, 73, 0.3)',
@@ -93,18 +97,20 @@ export default function DashboardView({
               title="Permanently remove all projects and files"
             >
               <Trash2 size={13} />
-              Remove All Projects
+              <span className="dashboard-delete-all-label">Remove All Projects</span>
             </button>
           )}
         </div>
 
         {/* Action bar */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
-          <button className="btn-primary" onClick={onOpenNewProjectModal} style={{ gap: 6 }}>
+        <div className="dashboard-action-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
+          <button type="button" className="btn-primary" onClick={onOpenNewProjectModal} style={{ gap: 6 }}>
             <Plus size={15} />
             New Project
           </button>
           <button
+            type="button"
+            className="dashboard-import-btn"
             onClick={onOpenZipImport}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
@@ -124,7 +130,7 @@ export default function DashboardView({
 
         {/* Search bar */}
         {projects.length > 1 && (
-          <div style={{
+          <div className="dashboard-search-bar" style={{
             display: 'flex', alignItems: 'center', gap: 8,
             background: 'var(--bg-sidebar)', border: '1px solid var(--border-light)',
             borderRadius: 10, padding: '0 12px', marginBottom: 20, height: 38
@@ -132,6 +138,7 @@ export default function DashboardView({
             <Search size={15} color="var(--text-muted)" />
             <input
               type="text"
+              aria-label="Search projects"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search projects by name or language..."
@@ -142,7 +149,10 @@ export default function DashboardView({
             />
             {search && (
               <button
+                type="button"
+                className="dashboard-search-clear"
                 onClick={() => setSearch('')}
+                aria-label="Clear project search"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, lineHeight: 1 }}
               >
                 ×
@@ -161,11 +171,13 @@ export default function DashboardView({
             <p style={{ marginBottom: 24, fontSize: 14, maxWidth: 420, margin: '0 auto 24px' }}>
               Your workspace is completely empty. Create a new Python script or Web project to get started.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className="btn-primary" onClick={onOpenNewProjectModal}>
+            <div className="dashboard-empty-actions" style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-primary" onClick={onOpenNewProjectModal}>
                 <Plus size={15} /> Create New Project
               </button>
               <button
+                type="button"
+                className="dashboard-import-btn"
                 onClick={onOpenZipImport}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -221,7 +233,7 @@ export default function DashboardView({
 
 function Section({ title, icon, count, children }) {
   return (
-    <section style={{ marginBottom: 28 }}>
+    <section className="project-section" style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         {icon}
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -231,7 +243,7 @@ function Section({ title, icon, count, children }) {
           {count}
         </span>
       </div>
-      <div style={{
+      <div className="project-card-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
         gap: 14
@@ -246,11 +258,9 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
   const isPython = project.type === 'python';
   const accent   = isPython ? '#4EC9B0' : '#CE9178';
   const bg       = isPython ? 'rgba(78,201,176,0.1)' : 'rgba(206,145,120,0.1)';
-  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-  const showControls = isHovered || isTouchDevice;
-
   return (
     <div
+      className="project-card"
       onMouseEnter={() => onHover(project.id)}
       onMouseLeave={() => onHover(null)}
       style={{
@@ -258,7 +268,7 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
         border: `1px solid ${isHovered ? 'var(--accent)' : 'var(--border-light)'}`,
         borderRadius: 14,
         padding: '16px 18px',
-        cursor: 'pointer',
+        cursor: 'default',
         transition: 'all 0.18s ease',
         boxShadow: isHovered ? '0 4px 20px rgba(0,122,204,0.14)' : 'none',
         display: 'flex',
@@ -276,14 +286,17 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
             {isPython ? <FileCode size={19} color={accent} /> : <Code2 size={19} color={accent} />}
           </div>
 
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="project-card-actions" style={{ display: 'flex', gap: 4 }}>
             {onRename && (
               <button
+                type="button"
+                className="project-card-action"
                 onClick={e => { e.stopPropagation(); onRename(project); }}
                 title="Rename project"
+                aria-label={`Rename ${project.name}`}
                 style={{
                   background: 'transparent', border: 'none', cursor: 'pointer',
-                  opacity: showControls ? 0.85 : 0, transition: 'opacity 0.2s', padding: 4,
+                  opacity: 0.85, padding: 4,
                   touchAction: 'manipulation'
                 }}
               >
@@ -291,11 +304,14 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
               </button>
             )}
             <button
+              type="button"
+              className="project-card-action"
               onClick={e => { e.stopPropagation(); onDelete(project.id); }}
               title="Delete project permanently"
+              aria-label={`Delete ${project.name}`}
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
-                opacity: showControls ? 0.85 : 0, transition: 'opacity 0.2s', padding: 4,
+                opacity: 0.85, padding: 4,
                 touchAction: 'manipulation'
               }}
             >
@@ -322,7 +338,8 @@ function ProjectCard({ project, isHovered, onHover, onOpen, onRename, onDelete }
           {timeAgo(project.lastOpened)}
         </div>
         <button
-          className="btn-primary"
+          type="button"
+          className="btn-primary project-open-btn"
           style={{ height: 28, fontSize: 11, padding: '0 12px', gap: 4 }}
           onClick={() => onOpen(project)}
         >

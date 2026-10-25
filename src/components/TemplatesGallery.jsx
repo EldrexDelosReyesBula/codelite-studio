@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sparkles, FileCode, Code2, Layers, Activity } from 'lucide-react';
+import { X, Sparkles, FileCode, Code2, Layers, Activity } from './icons';
 
 const TEMPLATES = [
   {
@@ -125,7 +125,8 @@ export default function TemplatesGallery({ isOpen, onClose, onLoadTemplate }) {
         <div className="modal-body">
           <div style={{ display: 'grid', gap: '12px' }}>
             {TEMPLATES.map((tmpl) => (
-              <div
+              <button
+                type="button"
                 key={tmpl.id}
                 style={{
                   background: 'var(--bg-darkest)',
@@ -133,6 +134,9 @@ export default function TemplatesGallery({ isOpen, onClose, onLoadTemplate }) {
                   borderRadius: '12px',
                   padding: '16px',
                   cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  color: 'inherit',
                   transition: 'border-color 0.2s ease'
                 }}
                 onClick={() => {
@@ -147,7 +151,7 @@ export default function TemplatesGallery({ isOpen, onClose, onLoadTemplate }) {
                     <span style={{ fontSize: '11px', color: 'var(--accent-light)', textTransform: 'uppercase' }}>
                       {tmpl.type}
                     </span>
-                  </div>
+                  </button>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
                   {tmpl.description}
