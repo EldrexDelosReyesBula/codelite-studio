@@ -489,6 +489,74 @@ button, .icon-btn, .header-action-btn, .tree-item, .brand-badge {
 
 /* On mobile, collapse to icon-only */
 @media (max-width: 768px) {
+  .sidebar-header {
+    height: 42px;
+    min-height: 42px;
+    padding: 0 8px;
+  }
+
+  .explorer-header-actions {
+    gap: 3px !important;
+  }
+
+  .explorer-header-action,
+  .explorer-project-rename,
+  .explorer-file-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    flex: 0 0 34px;
+    border: 1px solid var(--border-light);
+    border-radius: 7px;
+    background: var(--bg-darkest);
+  }
+
+  .explorer-header-action svg,
+  .explorer-project-rename svg,
+  .explorer-file-action svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+  }
+
+  .explorer-search {
+    height: 36px !important;
+    min-height: 36px;
+    margin: 6px 8px !important;
+    padding: 0 8px !important;
+  }
+
+  .explorer-filter-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 6px;
+  }
+
+  .explorer-file-row {
+    height: 36px;
+    padding-right: 78px !important;
+  }
+
+  .explorer-folder-row {
+    height: 36px !important;
+  }
+
+  .explorer-footer-action {
+    min-height: 34px;
+    padding: 4px 0 !important;
+    border-radius: 7px;
+  }
+
   .header-nav {
     gap: 6px;
     padding: 0 8px;
@@ -1938,5 +2006,190 @@ body.is-resizing-console .output-drawer {
     min-width: 40px;
     min-height: 40px;
     border-radius: 9px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-nav {
+    height: 48px;
+    min-height: 48px;
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .header-nav .nav-actions {
+    gap: 4px;
+  }
+
+  .header-nav .nav-actions-left > .icon-btn,
+  .header-nav .mobile-preview-toggle,
+  .header-nav .mobile-more-btn,
+  .header-nav .nav-actions-right > .run-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-width: 40px !important;
+    max-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 !important;
+    gap: 0;
+    flex: 0 0 40px;
+    border-radius: 8px;
+  }
+
+  .header-nav .mobile-more-btn > svg:last-child,
+  .header-nav .nav-actions-right > .run-btn .run-label {
+    display: none;
+  }
+
+  .header-nav .mobile-more-btn > svg:first-child {
+    width: 18px;
+    height: 18px;
+  }
+
+  .header-nav .mobile-preview-toggle > svg,
+  .header-nav .nav-actions-right > .run-btn > svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+
+  .project-switcher-btn {
+    min-height: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .editor-settings-bar {
+    height: 40px !important;
+    min-height: 40px !important;
+    gap: 4px !important;
+    padding: 0 6px !important;
+  }
+
+  .editor-clipboard-btn,
+  .editor-settings-bar .editor-clipboard-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 34px;
+    min-height: 34px;
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 0 9px;
+    border-radius: 7px;
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .editor-settings-bar select {
+    height: 34px;
+    min-height: 34px;
+    min-width: 54px;
+    padding: 0 5px !important;
+    border-radius: 7px;
+    font-size: 11px !important;
+  }
+
+  .tab-bar-container {
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .tab-item {
+    height: 38px;
+    gap: 5px;
+    padding: 0 8px;
+  }
+
+  .tab-item > .tab-close-btn,
+  .add-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    flex: 0 0 36px;
+    padding: 0 !important;
+  }
+
+  .touch-toolbar {
+    height: 40px;
+    min-height: 40px;
+    gap: 4px;
+  }
+
+  .touch-key,
+  .touch-toolbar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 38px;
+    min-height: 38px;
+    min-width: 40px;
+    padding: 0 8px;
+    border-radius: 7px;
+    flex: 0 0 auto;
+  }
+
+  .drawer-collapsed-bar {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .drawer-collapsed-bar > div:last-child {
+    min-height: 36px;
+  }
+
+  .drawer-header {
+    height: 42px;
+    min-height: 42px;
+    padding: 0 8px;
+  }
+
+  .drawer-header .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    border-radius: 7px;
+  }
+
+  .project-card-action {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .project-card .project-open-btn {
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .command-close-btn {
+    width: 40px !important;
+    min-width: 40px;
+    height: 40px !important;
+    min-height: 40px;
+    flex: 0 0 40px;
+  }
+
+  .command-filter-bar .frame-btn {
+    min-height: 38px;
+    padding: 0 10px;
   }
 }

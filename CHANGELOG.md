@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 - **Navigation and editor usability:** clearer mobile editor controls, smooth editor scrolling/caret movement, and accessible splitter semantics.
 - **Small-screen polish:** consistent touch targets, compact console controls, horizontal-scroll cues, and quieter editor whitespace indicators on mobile.
+- **Mobile file explorer:** compact, centered file actions and responsive explorer controls with accessible button labels.
 - **Action feedback:** copy, paste, and formatting now show clear success, informational, or error states; mobile search uses a more usable bottom-sheet layout.
 - **SEO metadata:** align structured metadata with the current release and improve social preview image descriptions.
 

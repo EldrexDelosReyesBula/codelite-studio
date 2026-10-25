@@ -50,6 +50,7 @@ function FolderNode({ name, node, depth = 0, activeFile, onSelectFile, onRenameF
     <div>
       <button
         type="button"
+        className="explorer-folder-row"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
         style={{
@@ -116,7 +117,7 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
     >
       <button
         type="button"
-        className={`tree-item ${isActive ? 'selected' : ''}`}
+        className={`tree-item explorer-file-row ${isActive ? 'selected' : ''}`}
         aria-pressed={isActive}
         onClick={() => onSelect(file)}
         style={{
@@ -139,7 +140,8 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
         <div style={{ display: 'flex', gap: 2, flexShrink: 0, position: 'absolute', right: 8 }}>
           {onRename && (
             <button
-              className="icon-btn"
+              type="button"
+              className="icon-btn explorer-file-action"
               style={{ width: 22, height: 22, padding: 0, opacity: 0.9, touchAction: 'manipulation' }}
               onClick={() => onRename(file)}
               title="Rename file"
@@ -150,7 +152,8 @@ function FileRow({ file, depth, isActive, onSelect, onRename, onDelete, showDele
           )}
           {showDelete && (
             <button
-              className="icon-btn"
+              type="button"
+              className="icon-btn explorer-file-action"
               style={{ width: 22, height: 22, padding: 0, opacity: 0.9, touchAction: 'manipulation' }}
               onClick={() => {
                 if (confirm(`Delete "${displayName}"? This cannot be undone.`)) {
@@ -241,35 +244,46 @@ export default function FileExplorer({
           </span>
           {currentProject && onRenameProject && (
             <button
-              className="icon-btn"
+              type="button"
+              className="icon-btn explorer-project-rename"
               style={{ width: 20, height: 20, padding: 0 }}
               onClick={() => onRenameProject(currentProject)}
               title="Rename active project"
+              aria-label="Rename active project"
             >
               <Edit2 size={11} color="var(--text-muted)" />
             </button>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 2 }}>
+        <div className="explorer-header-actions" style={{ display: 'flex', gap: 2 }}>
           <button
-            className="icon-btn" style={{ width: 26, height: 26 }}
+            type="button"
+            className="icon-btn explorer-header-action"
+            style={{ width: 26, height: 26 }}
             onClick={() => openNewFile()}
             title="New file"
+            aria-label="New file"
           >
             <FilePlus size={14} />
           </button>
           <button
-            className="icon-btn" style={{ width: 26, height: 26 }}
+            type="button"
+            className="icon-btn explorer-header-action"
+            style={{ width: 26, height: 26 }}
             onClick={openNewFolder}
             title="New folder"
+            aria-label="New folder"
           >
             <FolderPlus size={14} />
           </button>
           <button
-            className="icon-btn" style={{ width: 26, height: 26 }}
+            type="button"
+            className="icon-btn explorer-header-action"
+            style={{ width: 26, height: 26 }}
             onClick={onClose}
             title="Hide sidebar (Ctrl+B)"
+            aria-label="Hide file explorer"
           >
             <ChevronLeft size={16} />
           </button>
@@ -278,7 +292,7 @@ export default function FileExplorer({
 
       {/* ── Search ── */}
       {files.length > 2 && (
-        <div style={{
+        <div className="explorer-search" style={{
           display: 'flex', alignItems: 'center', gap: 6,
           margin: '5px 8px',
           background: 'var(--bg-darkest)', border: '1px solid var(--border-light)',
@@ -298,7 +312,10 @@ export default function FileExplorer({
           />
           {fileSearch && (
             <button
+              type="button"
+              className="explorer-filter-clear"
               onClick={() => setFileSearch('')}
+              aria-label="Clear file filter"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, lineHeight: 1 }}
             >×</button>
           )}
@@ -386,6 +403,8 @@ export default function FileExplorer({
       {/* ── Footer ── */}
       <div style={{ padding: '8px 8px 6px', borderTop: '0.5px solid var(--border-light)', display: 'flex', gap: 4 }}>
         <button
+          type="button"
+          className="explorer-footer-action"
           onClick={onOpenZipImport}
           style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
@@ -398,6 +417,8 @@ export default function FileExplorer({
           <Upload size={12} /> Import
         </button>
         <button
+          type="button"
+          className="explorer-footer-action"
           onClick={onExportZip}
           style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
